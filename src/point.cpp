@@ -7,7 +7,13 @@
 Point::Point()
 {
 
-	std::cout << "Point Contructor void" << std::endl;
+}
+
+Point::Point(std::vector<double> xy)
+{
+	this->x = xy[0];
+	this->y = xy[1];
+
 }
 
 Point::Point(double x, double y)
@@ -57,6 +63,14 @@ void Point::print(void)
 
 }
 
+
+double Point::module(void)
+{
+	Point zero = Point(0.0, 0.0);
+
+	return this->distance(zero);
+}
+
 double Point::distance(Point p)
 {
 	return distance(*this, p);
@@ -66,4 +80,14 @@ double Point::distance(Point p)
 double Point::distance(Point p1, Point p2)
 {
 	return sqrt( (p2.x-p1.x)*(p2.x-p1.x) + (p2.y-p1.y)*(p2.y-p1.y) );
+}
+
+Point Point::rotate_by_angle(double angle)
+{
+	Point rotated = Point(*this);
+
+	rotated.x = (this->x * cos(angle) - this->y * sin(angle));
+	rotated.y = (this->x * sin(angle) + this->y * cos(angle));
+
+	return rotated;
 }

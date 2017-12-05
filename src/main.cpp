@@ -290,8 +290,7 @@ int main() {
 
           	// TODO: define a path made up of (x,y) points that the car will visit sequentially every .02 seconds
             // Create very spaced (30m) waypoints, then interpolate with spline.
-            vector<double> ptsx;
-            vector<double> ptsy;
+            vector<Point> pts;
 
 
             Point ref = Point();
@@ -304,14 +303,13 @@ int main() {
 
             if(prev_size < 2){
               // Use 2 points that make the path tangent to the car.
-              double prev_car_x = car.x - cos(car.yaw_rad);
-              double prev_car_y = car.y - sin(car.yaw_rad);              
+              Point prev_car = Point();
+              prev_car.x = car.x - cos(car.yaw_rad);
+              prev_car.y = car.y - sin(car.yaw_rad);              
 
-              ptsx.push_back(prev_car_x);
-              ptsx.push_back(car.x);              
+              pts.push_back(prev_car);
+              pts.push_back(car);              
 
-              ptsy.push_back(prev_car_y);
-              ptsy.push_back(car.y);              
             }
             // use the previous path's end point as starting reference
             else{
@@ -319,96 +317,90 @@ int main() {
               ref.x = previous_path_x[prev_size-1];
               ref.y = previous_path_y[prev_size-1];
 
-              double ref_x_prev = previous_path_x[prev_size-2];
-              double ref_y_prev = previous_path_y[prev_size-2];
-              ref.yaw_rad = atan2(ref.y - ref_y_prev, ref.x - ref_x_prev );
+              Point ref_prev = Point();
+              ref_prev.x = previous_path_x[prev_size-2];
+              ref_prev.y = previous_path_y[prev_size-2];
+              ref.yaw_rad = atan2(ref.y - ref_prev.y, ref.x - ref_prev.x );
 
               // Use 2 points that make the path tangent to the previous path's end point
-              ptsx.push_back(ref_x_prev);
-              ptsx.push_back(ref.x);              
+              pts.push_back(ref_prev);
+              pts.push_back(ref);              
 
-              ptsy.push_back(ref_y_prev);
-              ptsy.push_back(ref.y);   
             }
 
-            vector<double> next_wp0 = getXY(car.s + 30,
-                                            (2+4*lane),
-                                            map_waypoints_s,
-                                            map_waypoints_x,
-                                            map_waypoints_y);
-            vector<double> next_wp1 = getXY(car.s + 60,
-                                            (2+4*lane),
-                                            map_waypoints_s,
-                                            map_waypoints_x,
-                                            map_waypoints_y);
-            vector<double> next_wp2 = getXY(car.s + 90,
-                                            (2+4*lane),
-                                            map_waypoints_s,
-                                            map_waypoints_x,
-                                            map_waypoints_y);
+            Point next_wp0 = Point( getXY(car.s + 30,
+                                          (2+4*lane),
+                                          map_waypoints_s,
+                                          map_waypoints_x,
+                                          map_waypoints_y) ); 
+            Point next_wp1 = Point( getXY(car.s + 60,
+                                          (2+4*lane),
+                                          map_waypoints_s,
+                                          map_waypoints_x,
+                                          map_waypoints_y) );
+            Point next_wp2 = Point( getXY(car.s + 90,
+                                          (2+4*lane),
+                                          map_waypoints_s,
+                                          map_waypoints_x,
+                                          map_waypoints_y) );
 
-            ptsx.push_back(next_wp0[0]);            
-            ptsx.push_back(next_wp1[0]);
-            ptsx.push_back(next_wp2[0]);
-
-            ptsy.push_back(next_wp0[1]);
-            ptsy.push_back(next_wp1[1]);
-            ptsy.push_back(next_wp2[1]);
+            pts.push_back(next_wp0);            
+            pts.push_back(next_wp1);
+            pts.push_back(next_wp2);
 
 
-            for(int ii = 0; ii < ptsx.size(); ii++){
-              // shift car reference angle to 0 degrees
-              double shift_x = ptsx[ii] - ref.x;
-              double shift_y = ptsy[ii] - ref.y;
-
-              ptsx[ii] = (shift_x * cos(0-ref.yaw_rad) - shift_y * sin(0-ref.yaw_rad));
-              ptsy[ii] = (shift_x * sin(0-ref.yaw_rad) + shift_y * cos(0-ref.yaw_rad));
-
+            for(int ii = 0; ii < pts.size(); ii++){
+              Point shift = Point();
+              shift = pts[ii] - ref;
+              pts[ii] = shift.rotate_by_angle(-ref.yaw_rad);
             }
 
             // Create a spline
-            tk:: spline s;
+            tk:: spline my_spline;
 
             // Set (x,y) points to the spline
-            s.set_points(ptsx, ptsy);
+            // !!!! Must be kept x and y separated instead of using point because of  my_spline.set_points(temp_x, temp_y);
+            vector<double> temp_x, temp_y;
+            for( vector<Point>::iterator p_point = pts.begin(); p_point != pts.end(); p_point++){
+              temp_x.push_back(p_point->x);
+              temp_y.push_back(p_point->y);
+            }
+            my_spline.set_points(temp_x, temp_y);
 
             // Define the actual (x,y) points we will use for the planner
-            vector<double> next_x_vals;
-            vector<double> next_y_vals;
-
+            vector<Point> next_vals;
+            
             // Start with all of the previous path points from last time
             for (int ii = 0; ii < previous_path_x.size(); ii++){
-              next_x_vals.push_back(previous_path_x[ii]);
-              next_y_vals.push_back(previous_path_y[ii]);
+              Point new_point = Point(previous_path_x[ii], previous_path_y[ii]);
+              next_vals.push_back(new_point);
             }
 
             // Calculate hot to break up spline points so that we travel at our desired reference velocity
-            double target_x = 30.0;
-            double target_y = s(target_x);
-            double target_dist = sqrt( (target_x)*(target_x) + (target_y)*(target_y) );
+            Point target = Point();
+            target.x = 30.0;
+            target.y = my_spline(target.x);
 
             double x_add_on = 0;
 
             // Fill up the rest of our path planner after filling it with previous points, here we will always output 50 points
             for( int ii = 1; ii <= 50-previous_path_x.size(); ii++ ){
-              double N = (target_dist/(0.02*ref_vel/2.24)); // div by 2.24 for MPH
-              double x_point = x_add_on + (target_x)/N;
-              double y_point = s(x_point);
+              double N = (target.module()/(0.02*ref_vel/2.24)); // div by 2.24 for MPH
 
-              x_add_on = x_point;
+              Point point = Point();
+              point.x = x_add_on + (target.x)/N;
+              point.y = my_spline(point.x);
 
-              double x_ref = x_point;
-              double y_ref = y_point;
+              x_add_on = point.x;
+
+              Point _ref = point;
 
               // Rotates back to normal after rotating it earlier
-              x_point = (x_ref * cos(ref.yaw_rad) - y_ref * sin(ref.yaw_rad));
-              y_point = (x_ref * sin(ref.yaw_rad) + y_ref * cos(ref.yaw_rad));
+              point = _ref.rotate_by_angle(ref.yaw_rad);
 
-              x_point += ref.x;
-              y_point += ref.y;
+              point = point + ref;
 
-              next_x_vals.push_back(x_point);
-              next_y_vals.push_back(y_point);
+              next_vals.push_back(point);
 
             }
 
@@ -431,6 +423,12 @@ int main() {
 
             json msgJson;
 
+            // !!!! Must be kept x and y separated instead of using point because of  my_spline.set_points(temp_x, temp_y);
+            vector<double> next_x_vals, next_y_vals;
+            for( vector<Point>::iterator p_point = next_vals.begin(); p_point != next_vals.end(); p_point++){
+              next_x_vals.push_back(p_point->x);
+              next_y_vals.push_back(p_point->y);
+            }
           	msgJson["next_x"] = next_x_vals;
           	msgJson["next_y"] = next_y_vals;
 
@@ -446,7 +444,7 @@ int main() {
         ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
       }
 
-      usleep(100000);
+      //usleep(100000);
     }
   });
 
