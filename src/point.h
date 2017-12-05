@@ -67,5 +67,22 @@ public:
   double module(void);
 
 
+  static std::vector<double> get_vector_x_from_list(std::vector<Point> &list){
+  	std::vector<double> new_list;
+  	for(std::vector<Point>::iterator p_point = list.begin(); p_point != list.end(); p_point++){
+  		new_list.push_back(p_point->x);
+  	}
+  	return new_list;
+  }
+
+  static std::vector<double> get_vector_y_from_list(std::vector<Point> &list){
+  	std::vector<double> new_list;
+  	for(std::vector<Point>::iterator p_point = list.begin(); p_point != list.end(); p_point++){
+  		new_list.push_back(p_point->y);
+  	}
+  	return new_list;
+  }
+
+
 };
 

@@ -359,13 +359,8 @@ int main() {
             tk:: spline my_spline;
 
             // Set (x,y) points to the spline
-            // !!!! Must be kept x and y separated instead of using point because of  my_spline.set_points(temp_x, temp_y);
-            vector<double> temp_x, temp_y;
-            for( vector<Point>::iterator p_point = pts.begin(); p_point != pts.end(); p_point++){
-              temp_x.push_back(p_point->x);
-              temp_y.push_back(p_point->y);
-            }
-            my_spline.set_points(temp_x, temp_y);
+            my_spline.set_points( Point::get_vector_x_from_list(pts), 
+                                  Point::get_vector_y_from_list(pts));
 
             // Define the actual (x,y) points we will use for the planner
             vector<Point> next_vals;
@@ -393,44 +388,18 @@ int main() {
 
               x_add_on = point.x;
 
-              Point _ref = point;
-
               // Rotates back to normal after rotating it earlier
-              point = _ref.rotate_by_angle(ref.yaw_rad);
-
+              point = point.rotate_by_angle(ref.yaw_rad);
               point = point + ref;
 
               next_vals.push_back(point);
 
             }
 
-
- 
-            // double dist_inc = 0.5;
-            // double delta_car_yaw = 40.0/50.0;
-            
-            // for(int i = 0; i < 50; i++)
-            // {
-            //   double next_s = car_s + (i+1)*dist_inc;
-            //   double next_d = car_d;
-
-            //   vector<double> xy = getXY(next_s, next_d, map_waypoints_s, map_waypoints_x, map_waypoints_y); 
-
-            //   next_x_vals.push_back(xy[0]);
-            //   next_y_vals.push_back(xy[1]);
-            // }
-
-
             json msgJson;
 
-            // !!!! Must be kept x and y separated instead of using point because of  my_spline.set_points(temp_x, temp_y);
-            vector<double> next_x_vals, next_y_vals;
-            for( vector<Point>::iterator p_point = next_vals.begin(); p_point != next_vals.end(); p_point++){
-              next_x_vals.push_back(p_point->x);
-              next_y_vals.push_back(p_point->y);
-            }
-          	msgJson["next_x"] = next_x_vals;
-          	msgJson["next_y"] = next_y_vals;
+          	msgJson["next_x"] = Point::get_vector_x_from_list(next_vals);
+          	msgJson["next_y"] = Point::get_vector_y_from_list(next_vals);
 
           	auto msg = "42[\"control\","+ msgJson.dump()+"]";
 
