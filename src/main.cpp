@@ -16,6 +16,7 @@
 #include "point.h"
 #include "test.h"
 #include "helpers.h"
+#include "sensor_fusion_point.h"
 
 
 using namespace std;
@@ -258,7 +259,23 @@ int main() {
           	// Sensor Fusion Data, a list of all other cars on the same side of the road.
           	auto sensor_fusion = json_msg[1]["sensor_fusion"];
 
-            
+            // Get sensor fusion data
+            vector<SensorFusionPoint> sensor_fusion_points;
+            for(int ii = 0; ii < sensor_fusion.size(); ii++){
+                SensorFusionPoint new_point;
+                new_point.d = sensor_fusion[ii][6];
+                new_point.vx = sensor_fusion[ii][3];
+                new_point.vy = sensor_fusion[ii][4];
+                new_point.speed = sqrt( new_point.vx*new_point.vx + new_point.vy*new_point.vy );
+                new_point.s = sensor_fusion[ii][5];
+            }
+
+
+            // inputs
+            // vector<Point> previous_path
+            // Point end_path
+            // auto sensor_fusion
+            // --------------------------------------------------------------
             if(prev_size > 0){
               car.s = end_path.s;
             }
@@ -266,19 +283,15 @@ int main() {
             bool too_close = false;
 
             // Find ref_v to use
-            for(int ii = 0; ii < sensor_fusion.size(); ii++){
+            for(int ii = 0; ii < sensor_fusion_points.size(); ii++){
+
               // Car is in my lane
-              float d = sensor_fusion[ii][6];
-              if(d < (2 + 4.0*lane + 2) && d > (2 + 4*lane - 2)){
-                double vx = sensor_fusion[ii][3];
-                double vy = sensor_fusion[ii][4];
-                double check_speed = sqrt( vx*vx + vy*vy );
-                double check_car_s = sensor_fusion[ii][5];
+              if(sensor_fusion_points[ii].d < (2 + 4.0*lane + 2) && sensor_fusion_points[ii].d > (2 + 4*lane - 2)){
 
                 // If using previous points can project s value out 
-                check_car_s += ((double)prev_size*0.02*check_speed);
+                sensor_fusion_points[ii].s += ((double)prev_size*0.02*sensor_fusion_points[ii].speed);
                 // Check s values greater than mine and s gap
-                if((check_car_s > car.s) && ((check_car_s - car.s) < 30)){
+                if((sensor_fusion_points[ii].s > car.s) && ((sensor_fusion_points[ii].s - car.s) < 30)){
                   
                   too_close = true;
                   if(lane > 0){
@@ -403,7 +416,9 @@ int main() {
               next_vals.push_back(point);
 
             }
-
+            // --------------------------------------------------------------
+            // output
+            //  vector<Point> next_vals;
             json msgJson;
 
           	msgJson["next_x"] = Point::get_vector_x_from_list(next_vals);

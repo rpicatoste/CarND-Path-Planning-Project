@@ -1,11 +1,16 @@
-#ifndef ROAD_H
-#define ROAD_H
 
-class Road {
+#ifndef BEHAVIOR_PLANNER_H
+#define BEHAVIOR_PLANNER_H
+
+#include "point.h"
+#include <vector>
+#include "sensor_fusion_point.h"
+
+class BehaviorPlanner {
 
   public:
 
-  	int update_width = 70;
+  	std::vector<Point> plan_next_position(std::vector<Point> previous_path, Point end_path, std::vector<SensorFusionPoint> sensor_fusion_points);
 /*
   	string ego_rep = " *** ";
 
@@ -43,6 +48,9 @@ class Road {
 
   	void cull();
 */
+
 };
+
+
 
 #endif 
