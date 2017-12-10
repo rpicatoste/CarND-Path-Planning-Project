@@ -243,13 +243,21 @@ int main() {
           	auto previous_path_x = json_msg[1]["previous_path_x"];
           	auto previous_path_y = json_msg[1]["previous_path_y"];
 
+            int prev_size = previous_path_x.size();
+
+            vector<Point> previous_path;
+            for( int ii = 0; ii<prev_size; ii++){
+              previous_path.push_back( Point(previous_path_x[ii], previous_path_y[ii]) );
+            }
+
+
+
           	// Previous path's end s and d values 
             Point end_path = Point(0.0, 0.0, json_msg[1]["end_path_s"], json_msg[1]["end_path_d"]);
 
           	// Sensor Fusion Data, a list of all other cars on the same side of the road.
           	auto sensor_fusion = json_msg[1]["sensor_fusion"];
 
-            int prev_size = previous_path_x.size();
             
             if(prev_size > 0){
               car.s = end_path.s;
