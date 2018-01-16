@@ -37,10 +37,10 @@ std::vector<Point> BehaviorPlanner::plan_next_position(	Point &car,
         // Check s values greater than mine and s gap
         if((sensor_fusion_points[ii].s > car.s) && ((sensor_fusion_points[ii].s - car.s) < 30)){
           
-          too_close = true;
-          if(car.lane > 0){
-            car.lane = 0;
-          }
+	          too_close = true;
+	          if(car.lane > 0){
+	            car.lane = 0;
+	          }
 
         }
       }
@@ -117,13 +117,18 @@ std::vector<Point> BehaviorPlanner::plan_next_position(	Point &car,
 
 
     for(int ii = 0; ii < pts.size(); ii++){
-      Point shift = Point();
-      shift = pts[ii] - ref;
-      pts[ii] = shift.rotate_by_angle(-ref.yaw_rad);
+		Point shift = Point();
+		shift = pts[ii] - ref;
+		pts[ii] = shift.rotate_by_angle(-ref.yaw_rad);
     }
 
     // Create a spline
     tk:: spline my_spline;
+
+    for(int ii = 0; ii < 5; ii++) {	
+    	if(pts.size()<ii){break;}
+    	pts[ii].print("Next vals (" + std::to_string(ii) + "): ");
+    }
 
     // Set (x,y) points to the spline
     my_spline.set_points( Point::get_vector_x_from_list(pts), 
@@ -134,9 +139,9 @@ std::vector<Point> BehaviorPlanner::plan_next_position(	Point &car,
     
     // Start with all of the previous path points from last time
     for (int ii = 0; ii < previous_path.size(); ii++){
-      Point new_point = Point(previous_path[ii].x, previous_path[ii].x);
-      next_vals.push_back(new_point);
-    }
+		Point new_point = Point(previous_path[ii].x, previous_path[ii].x);
+		next_vals.push_back(new_point);
+	}
 
     // Calculate hot to break up spline points so that we travel at our desired reference velocity
     Point target = Point();
@@ -147,24 +152,24 @@ std::vector<Point> BehaviorPlanner::plan_next_position(	Point &car,
 
     // Fill up the rest of our path planner after filling it with previous points, here we will always output 50 points
     for( int ii = 1; ii <= 50-previous_path.size(); ii++ ){
-      double N = (target.module()/(0.02*car.ref_vel/2.24)); // div by 2.24 for MPH
+		double N = (target.module()/(0.02*car.ref_vel/2.24)); // div by 2.24 for MPH
 
-      Point point = Point();
-      point.x = x_add_on + (target.x)/N;
-      point.y = my_spline(point.x);
+		Point point = Point();
+		point.x = x_add_on + (target.x)/N;
+		point.y = my_spline(point.x);
 
-      x_add_on = point.x;
+		x_add_on = point.x;
 
-      // Rotates back to normal after rotating it earlier
-      point = point.rotate_by_angle(ref.yaw_rad);
-      point = point + ref;
+		// Rotates back to normal after rotating it earlier
+		point = point.rotate_by_angle(ref.yaw_rad);
+		point = point + ref;
 
-      next_vals.push_back(point);
+		next_vals.push_back(point);
 
     }
 
-    for(int ii = 0; ii < next_vals.size(); ii++) {	
-      next_vals[ii].print("Next vals: ");
+    for(int ii = 0; ii < 5; ii++) {	//next_vals.size(); ii++) {	
+		next_vals[ii].print("Next vals (" + std::to_string(ii) + "): ");
     }
 
 	return next_vals;
