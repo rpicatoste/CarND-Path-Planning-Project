@@ -187,7 +187,8 @@ int main() {
   double ref_vel = 0.0; // mph
   // Start in lane 1
   int lane = 1;
-Point car = Point();
+  Point car = Point();
+  car.lane = lane;
 
   h.onMessage([&car, &ref_vel, &lane, &map_waypoints_x, &map_waypoints_y, &map_waypoints_s, &map_waypoints_dx, &map_waypoints_dy](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
                      uWS::OpCode opCode) {
@@ -215,7 +216,6 @@ Point car = Point();
             car.d = json_msg[1]["d"];
             car.yaw_rad = json_msg[1]["yaw"];
             car.speed = json_msg[1]["speed"];
-            car.lane = lane;
 
           	// Previous path data given to the Planner
           	auto previous_path_x = json_msg[1]["previous_path_x"];
