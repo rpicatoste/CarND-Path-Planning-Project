@@ -21,7 +21,7 @@ std::vector<Point> BehaviorPlanner::plan_next_position(	Point &car,
 
     int prev_size = previous_path.size();
     if(prev_size > 0){
-      car.s = end_path.s;
+    	car.s = end_path.s;
     }
 
     bool too_close = false;
@@ -30,28 +30,27 @@ std::vector<Point> BehaviorPlanner::plan_next_position(	Point &car,
     for(int ii = 0; ii < sensor_fusion_points.size(); ii++){
 
       // Car is in my car.lane
-      if(sensor_fusion_points[ii].d < (2 + 4.0*car.lane + 2) && sensor_fusion_points[ii].d > (2 + 4*car.lane - 2)){
+    	if(sensor_fusion_points[ii].d < (2 + 4.0*car.lane + 2) && sensor_fusion_points[ii].d > (2 + 4*car.lane - 2)){
 
-        // If using previous points can project s value out 
-        sensor_fusion_points[ii].s += ((double)prev_size*0.02*sensor_fusion_points[ii].speed);
-        // Check s values greater than mine and s gap
-        if((sensor_fusion_points[ii].s > car.s) && ((sensor_fusion_points[ii].s - car.s) < 30)){
-          
-	          too_close = true;
-	          if(car.lane > 0){
-	            car.lane = 0;
-	          }
-
-        }
-      }
+	        // If using previous points can project s value out 
+	        sensor_fusion_points[ii].s += ((double)prev_size*0.02*sensor_fusion_points[ii].speed);
+	        // Check s values greater than mine and s gap
+	        if((sensor_fusion_points[ii].s > car.s) && ((sensor_fusion_points[ii].s - car.s) < 30)){
+	          
+	        	too_close = true;
+	        	if(car.lane > 0){
+	            	car.lane = 0;
+	        	}
+        	}
+    	}
     }
 
 
     if(too_close){
-      car.ref_vel -= 0.224;
+    	car.ref_vel -= 0.224;
     }
     else if(car.ref_vel < 49.5){
-      car.ref_vel += 0.224;
+    	car.ref_vel += 0.224;
     }
 
 
@@ -61,39 +60,41 @@ std::vector<Point> BehaviorPlanner::plan_next_position(	Point &car,
 
 
     Point ref = Point();
-    ref.x = car.x;
-    ref.y = car.y;
-    ref.yaw_deg = car.yaw_deg;
-    ref.yaw_rad = car.yaw_rad;
-    ref.print("Ref: ");
-
 
     if(prev_size < 2){
-      // Use 2 points that make the path tangent to the car.
-      Point prev_car = Point();
-      prev_car.x = car.x - cos(car.yaw_rad);
-      prev_car.y = car.y - sin(car.yaw_rad);              
+		// Use 2 points that make the path tangent to the car.
+		ref.x = car.x;
+	    ref.y = car.y;
+	    ref.yaw_rad = car.yaw_rad;
+	    ref.yaw_deg = car.yaw_deg;
 
-      pts.push_back(prev_car);
-      pts.push_back(car);              
+		Point prev_car = Point();
+		prev_car.x = car.x - cos(car.yaw_rad);
+		prev_car.y = car.y - sin(car.yaw_rad);              
+
+		pts.push_back(prev_car);
+		pts.push_back(car);              
 
     }
     // use the previous path's end point as starting reference
     else{
-      // Redefine
-      ref.x = previous_path[prev_size-1].x;
-      ref.y = previous_path[prev_size-1].y;
+		// Redefine
+		ref.x = previous_path[prev_size-1].x;
+		ref.y = previous_path[prev_size-1].y;
 
-      Point ref_prev = Point();
-      ref_prev.x = previous_path[prev_size-2].x;
-      ref_prev.y = previous_path[prev_size-2].y;
-      ref.yaw_rad = atan2(ref.y - ref_prev.y, ref.x - ref_prev.x );
+		Point ref_prev = Point();
+		ref_prev.x = previous_path[prev_size-2].x;
+		ref_prev.y = previous_path[prev_size-2].y;
 
-      // Use 2 points that make the path tangent to the previous path's end point
-      pts.push_back(ref_prev);
-      pts.push_back(ref);              
+		ref.yaw_rad = atan2(ref.y - ref_prev.y, ref.x - ref_prev.x );
+		ref.yaw_deg = ref.yaw_rad * 180.0 / M_PI;
+
+		// Use 2 points that make the path tangent to the previous path's end point
+		pts.push_back(ref_prev);
+		pts.push_back(ref);              
 
     }
+    //ref.print("Ref: ");
 
     Point next_wp0 = Point( getXY(car.s + 30,
                                   (2+4*car.lane),
@@ -125,11 +126,6 @@ std::vector<Point> BehaviorPlanner::plan_next_position(	Point &car,
     // Create a spline
     tk:: spline my_spline;
 
-    for(int ii = 0; ii < 5; ii++) {	
-    	if(pts.size()<ii){break;}
-    	pts[ii].print("Next vals (" + std::to_string(ii) + "): ");
-    }
-
     // Set (x,y) points to the spline
     my_spline.set_points( Point::get_vector_x_from_list(pts), 
                           Point::get_vector_y_from_list(pts));
@@ -139,7 +135,7 @@ std::vector<Point> BehaviorPlanner::plan_next_position(	Point &car,
     
     // Start with all of the previous path points from last time
     for (int ii = 0; ii < previous_path.size(); ii++){
-		Point new_point = Point(previous_path[ii].x, previous_path[ii].x);
+		Point new_point = Point(previous_path[ii].x, previous_path[ii].y);
 		next_vals.push_back(new_point);
 	}
 
@@ -166,10 +162,6 @@ std::vector<Point> BehaviorPlanner::plan_next_position(	Point &car,
 
 		next_vals.push_back(point);
 
-    }
-
-    for(int ii = 0; ii < 5; ii++) {	//next_vals.size(); ii++) {	
-		next_vals[ii].print("Next vals (" + std::to_string(ii) + "): ");
     }
 
 	return next_vals;
