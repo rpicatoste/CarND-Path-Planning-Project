@@ -4,6 +4,18 @@
 		"selected_items":
 		[
 			[
+				"ref",
+				"ref_vel"
+			],
+			[
+				"sen",
+				"sensor_fusion_points"
+			],
+			[
+				"sensor",
+				"sensor_fusion"
+			],
+			[
 				"p",
 				"p_point"
 			],
@@ -72,10 +84,6 @@
 				"ref_x_prev"
 			],
 			[
-				"ref",
-				"ref_x"
-			],
-			[
 				"pre",
 				"prev_size-1"
 			],
@@ -108,37 +116,31 @@
 	"buffers":
 	[
 		{
+			"contents": "#include <fstream>\n#include <math.h>\n#include <uWS/uWS.h>\n#include <chrono>\n#include <iostream>\n#include <thread>\n#include <vector>\n#include \"json.hpp\"\n\n#include \"Eigen-3.3/Eigen/Core\"\n#include \"Eigen-3.3/Eigen/QR\"\n\n#include <unistd.h>\n#include \"road.h\"\n#include \"point.h\"\n#include \"test.h\"\n#include \"helpers.h\"\n#include \"sensor_fusion_point.h\"\n#include \"behavior_planner.h\"\n\nusing namespace std;\n\n// for convenience\nusing json = nlohmann::json;\n\nconstexpr double pi() { return M_PI; }\n\n// Checks if the SocketIO event has JSON data.\n// If there is data the JSON object in string format will be returned,\n// else the empty string \"\" will be returned.\nstring hasData(string s) {\n  auto found_null = s.find(\"null\");\n  auto b1 = s.find_first_of(\"[\");\n  auto b2 = s.find_first_of(\"}\");\n  if (found_null != string::npos) {\n    return \"\";\n  } else if (b1 != string::npos && b2 != string::npos) {\n    return s.substr(b1, b2 - b1 + 2);\n  }\n  return \"\";\n}\n\ndouble distance(double x1, double y1, double x2, double y2)\n{\n    return sqrt((x2-x1)*(x2-x1)+(y2-y1)*(y2-y1));\n}\n\nint ClosestWaypoint(double x, double y, const vector<double> &maps_x, const vector<double> &maps_y)\n{\n\n\tdouble closestLen = 100000; //large number\n\tint closestWaypoint = 0;\n\n\tfor(int i = 0; i < maps_x.size(); i++)\n\t{\n\t\tdouble map_x = maps_x[i];\n\t\tdouble map_y = maps_y[i];\n\n\n\t\tdouble dist = distance(x,y,map_x,map_y);\n\t\tif(dist < closestLen)\n\t\t{\n\t\t\tclosestLen = dist;\n\t\t\tclosestWaypoint = i;\n\t\t}\n\n\t}\n\n\treturn closestWaypoint;\n\n}\n\nint NextWaypoint(double x, double y, double theta, const vector<double> &maps_x, const vector<double> &maps_y)\n{\n\n\tint closestWaypoint = ClosestWaypoint(x,y,maps_x,maps_y);\n\n\tdouble map_x = maps_x[closestWaypoint];\n\tdouble map_y = maps_y[closestWaypoint];\n\n\tdouble heading = atan2((map_y-y),(map_x-x));\n\n\tdouble angle = fabs(theta-heading);\n  angle = min(2*pi() - angle, angle);\n\n  if(angle > pi()/4)\n  {\n    closestWaypoint++;\n  if (closestWaypoint == maps_x.size())\n  {\n    closestWaypoint = 0;\n  }\n  }\n\n  return closestWaypoint;\n}\n\n// Transform from Cartesian x,y coordinates to Frenet s,d coordinates\nvector<double> getFrenet(double x, double y, double theta, const vector<double> &maps_x, const vector<double> &maps_y)\n{\n\tint next_wp = NextWaypoint(x,y, theta, maps_x,maps_y);\n\n\tint prev_wp;\n\tprev_wp = next_wp-1;\n\tif(next_wp == 0)\n\t{\n\t\tprev_wp  = maps_x.size()-1;\n\t}\n\n\tdouble n_x = maps_x[next_wp]-maps_x[prev_wp];\n\tdouble n_y = maps_y[next_wp]-maps_y[prev_wp];\n\tdouble x_x = x - maps_x[prev_wp];\n\tdouble x_y = y - maps_y[prev_wp];\n\n\t// find the projection of x onto n\n\tdouble proj_norm = (x_x*n_x+x_y*n_y)/(n_x*n_x+n_y*n_y);\n\tdouble proj_x = proj_norm*n_x;\n\tdouble proj_y = proj_norm*n_y;\n\n\tdouble frenet_d = distance(x_x,x_y,proj_x,proj_y);\n\n\t//see if d value is positive or negative by comparing it to a center point\n\n\tdouble center_x = 1000-maps_x[prev_wp];\n\tdouble center_y = 2000-maps_y[prev_wp];\n\tdouble centerToPos = distance(center_x,center_y,x_x,x_y);\n\tdouble centerToRef = distance(center_x,center_y,proj_x,proj_y);\n\n\tif(centerToPos <= centerToRef)\n\t{\n\t\tfrenet_d *= -1;\n\t}\n\n\t// calculate s value\n\tdouble frenet_s = 0;\n\tfor(int i = 0; i < prev_wp; i++)\n\t{\n\t\tfrenet_s += distance(maps_x[i],maps_y[i],maps_x[i+1],maps_y[i+1]);\n\t}\n\n\tfrenet_s += distance(0,0,proj_x,proj_y);\n\n\treturn {frenet_s,frenet_d};\n\n}\n\n\nint main() {\n  uWS::Hub h;\n\n  // Load up map values for waypoint's x,y,s and d normalized normal vectors\n  vector<double> map_waypoints_x;\n  vector<double> map_waypoints_y;\n  vector<double> map_waypoints_s;\n  vector<double> map_waypoints_dx;\n  vector<double> map_waypoints_dy;\n\n  // Waypoint map to read from\n  string map_file_ = \"../data/highway_map.csv\";\n  // The max s value before wrapping around the track back to 0\n  double max_s = 6945.554;\n\n  ifstream in_map_(map_file_.c_str(), ifstream::in);\n\n  string line;\n  while (getline(in_map_, line)) {\n  \tistringstream iss(line);\n  \tdouble x;\n  \tdouble y;\n  \tfloat s;\n  \tfloat d_x;\n  \tfloat d_y;\n  \tiss >> x;\n  \tiss >> y;\n  \tiss >> s;\n  \tiss >> d_x;\n  \tiss >> d_y;\n  \tmap_waypoints_x.push_back(x);\n  \tmap_waypoints_y.push_back(y);\n  \tmap_waypoints_s.push_back(s);\n  \tmap_waypoints_dx.push_back(d_x);\n  \tmap_waypoints_dy.push_back(d_y);\n  }\n\n\n  // Have a reference velocity to target\n  double ref_vel = 0.0; // mph\n  // Start in lane 1\n  int lane = 1;\nPoint car = Point();\n\n  h.onMessage([&car, &ref_vel, &lane, &map_waypoints_x, &map_waypoints_y, &map_waypoints_s, &map_waypoints_dx, &map_waypoints_dy](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,\n                     uWS::OpCode opCode) {\n    // \"42\" at the start of the message means there's a websocket message event.\n    // The 4 signifies a websocket message\n    // The 2 signifies a websocket event\n    //auto sdata = string(data).substr(0, length);\n    //cout << sdata << endl;\n    if (length && length > 2 && data[0] == '4' && data[1] == '2') {\n\n      auto s = hasData(data);\n\n      if (s != \"\") {\n        auto json_msg = json::parse(s);\n        string event = json_msg[0].get<string>();\n        \n        if (event == \"telemetry\") {\n          // json_msg[1] is the data JSON object\n          \n        \t// Main car's localization Data\n            car.x = json_msg[1][\"x\"];\n            car.y = json_msg[1][\"y\"];\n            car.s = json_msg[1][\"s\"];\n            car.d = json_msg[1][\"d\"];\n            car.yaw_rad = json_msg[1][\"yaw\"];\n            car.speed = json_msg[1][\"speed\"];\n            car.lane = lane;\n\n          \t// Previous path data given to the Planner\n          \tauto previous_path_x = json_msg[1][\"previous_path_x\"];\n          \tauto previous_path_y = json_msg[1][\"previous_path_y\"];\n\n            int prev_size = previous_path_x.size();\n\n            vector<Point> previous_path;\n            for( int ii = 0; ii<prev_size; ii++){\n              previous_path.push_back( Point(previous_path_x[ii], previous_path_y[ii]) );\n            }\n\n          \t// Previous path's end s and d values \n            Point end_path = Point(0.0, 0.0, json_msg[1][\"end_path_s\"], json_msg[1][\"end_path_d\"]);\n\n          \t// Sensor Fusion Data, a list of all other cars on the same side of the road.\n          \tauto sensor_fusion = json_msg[1][\"sensor_fusion\"];\n\n            // Get sensor fusion data\n            vector<SensorFusionPoint> sensor_fusion_points;\n            for(int ii = 0; ii < sensor_fusion.size(); ii++){\n                SensorFusionPoint new_point;\n                new_point.d = sensor_fusion[ii][6];\n                new_point.vx = sensor_fusion[ii][3];\n                new_point.vy = sensor_fusion[ii][4];\n                new_point.speed = sqrt( new_point.vx*new_point.vx + new_point.vy*new_point.vy );\n                new_point.s = sensor_fusion[ii][5];\n\n                sensor_fusion_points.push_back(new_point);\n            }\n\n            BehaviorPlanner behavior_planner = BehaviorPlanner();\n            vector<Point> next_vals = behavior_planner.plan_next_position(car, \n                                                                          previous_path, \n                                                                          end_path, \n                                                                          sensor_fusion_points,\n                                                                          map_waypoints_x,\n                                                                          map_waypoints_y,\n                                                                          map_waypoints_s);\n\n          \t//this_thread::sleep_for(chrono::milliseconds(1000));\n            json msgJson;\n            msgJson[\"next_x\"] = Point::get_vector_x_from_list(next_vals);\n            msgJson[\"next_y\"] = Point::get_vector_y_from_list(next_vals);\n            auto msg = \"42[\\\"control\\\",\"+ msgJson.dump()+\"]\";\n            ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);\n          \n        }\n      } else {\n        // Manual driving\n        std::string msg = \"42[\\\"manual\\\",{}]\";\n        ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);\n      }\n\n      //usleep(100000);\n    }\n  });\n\n  // We don't need this since we're not using HTTP but if it's removed the\n  // program\n  // doesn't compile :-(\n  h.onHttpRequest([](uWS::HttpResponse *res, uWS::HttpRequest req, char *data,\n                     size_t, size_t) {\n    const std::string s = \"<h1>Hello world!</h1>\";\n    if (req.getUrl().valueLength == 1) {\n      res->end(s.data(), s.length());\n    } else {\n      // i guess this should be done more gracefully?\n      res->end(nullptr, 0);\n    }\n  });\n\n  h.onConnection([&h](uWS::WebSocket<uWS::SERVER> ws, uWS::HttpRequest req) {\n    std::cout << \"Connected!!!\" << std::endl;\n  });\n\n  h.onDisconnection([&h](uWS::WebSocket<uWS::SERVER> ws, int code,\n                         char *message, size_t length) {\n    ws.close();\n    std::cout << \"Disconnected\" << std::endl;\n  });\n\n  int port = 4567;\n  if (h.listen(port)) {\n    std::cout << \"Listening to port \" << port << std::endl;\n  } else {\n    std::cerr << \"Failed to listen to port\" << std::endl;\n    return -1;\n  }\n  h.run();\n}\n",
 			"file": "src/main.cpp",
+			"file_size": 9754,
+			"file_write_time": 131574085037070306,
 			"settings":
 			{
-				"buffer_size": 13770,
+				"buffer_size": 9046,
 				"encoding": "UTF-8",
 				"line_ending": "Windows"
 			}
 		},
 		{
-			"file": "src/spline.h",
+			"file": "src/behavior_planner.h",
 			"settings":
 			{
-				"buffer_size": 14172,
-				"encoding": "UTF-8",
-				"line_ending": "Unix"
-			}
-		},
-		{
-			"file": "src/helpers.cpp",
-			"settings":
-			{
-				"buffer_size": 303,
+				"buffer_size": 1410,
 				"encoding": "UTF-8",
 				"line_ending": "Windows"
 			}
 		},
 		{
-			"file": "src/helpers.h",
+			"file": "src/behavior_planner.cpp",
 			"settings":
 			{
-				"buffer_size": 55,
+				"buffer_size": 5993,
 				"encoding": "UTF-8",
 				"line_ending": "Windows"
 			}
@@ -147,7 +149,7 @@
 			"file": "src/point.cpp",
 			"settings":
 			{
-				"buffer_size": 1365,
+				"buffer_size": 1514,
 				"encoding": "UTF-8",
 				"line_ending": "Windows"
 			}
@@ -156,36 +158,19 @@
 			"file": "src/point.h",
 			"settings":
 			{
-				"buffer_size": 1733,
+				"buffer_size": 1839,
 				"encoding": "UTF-8",
 				"line_ending": "Windows"
 			}
 		},
 		{
-			"file": "src/road.cpp",
+			"contents": "Searching 1658 files for \".print\" (case sensitive)\n\nD:\\Ricardo\\Google Drive\\Study\\Self Driving Car Nanodegree\\Term 3\\CarND-Path-Planning-Project\\src\\behavior_planner.cpp:\n   61      ref.yaw_deg = car.yaw_deg;\n   62      ref.yaw_rad = car.yaw_rad;\n   63:     ref.print();\n   64  \n   65  \n   ..\n  161      for(int ii = 0; ii < next_vals.size(); ii++) {\n  162      \t\n  163:       next_vals[ii].print(\"\");\n  164  \n  165      }\n\n2 matches in 1 file\n",
 			"settings":
 			{
-				"buffer_size": 17,
-				"encoding": "UTF-8",
-				"line_ending": "Windows"
-			}
-		},
-		{
-			"file": "src/road.h",
-			"settings":
-			{
-				"buffer_size": 608,
-				"encoding": "UTF-8",
-				"line_ending": "Windows"
-			}
-		},
-		{
-			"file": "CMakeLists.txt",
-			"settings":
-			{
-				"buffer_size": 618,
-				"encoding": "UTF-8",
-				"line_ending": "Windows"
+				"buffer_size": 444,
+				"line_ending": "Windows",
+				"name": "Find Results",
+				"scratch": true
 			}
 		}
 	],
@@ -226,12 +211,20 @@
 	],
 	"file_history":
 	[
+		"/D/Ricardo/Google Drive/Study/Self Driving Car Nanodegree/Term 3/CarND-Path-Planning-Project/src/sensor_fusion_point.h",
+		"/D/Ricardo/Google Drive/Study/Self Driving Car Nanodegree/Term 3/CarND-Path-Planning-Project/src/sensor_fusion_point.cpp",
+		"/D/Ricardo/Google Drive/Study/Self Driving Car Nanodegree/Term 3/CarND-Path-Planning-Project/README.md",
+		"/D/Ricardo/Google Drive/Study/Self Driving Car Nanodegree/Term 3/CarND-Path-Planning-Project/CMakeLists.txt",
+		"/D/Ricardo/Google Drive/Study/Self Driving Car Nanodegree/Term 3/CarND-Path-Planning-Project/src/test.h",
+		"/D/Ricardo/Google Drive/Study/Self Driving Car Nanodegree/Term 3/CarND-Path-Planning-Project/src/road.h",
+		"/D/Ricardo/Google Drive/Study/Self Driving Car Nanodegree/Term 3/CarND-Path-Planning-Project/src/helpers.h",
+		"/D/Ricardo/Google Drive/Study/Self Driving Car Nanodegree/Term 3/CarND-Path-Planning-Project/src/helpers.cpp",
+		"/D/Ricardo/Google Drive/Study/Self Driving Car Nanodegree/Term 3/CarND-Path-Planning-Project/src/spline.h",
+		"/D/Ricardo/Google Drive/Study/Self Driving Car Nanodegree/Term 3/CarND-Path-Planning-Project/src/road.cpp",
 		"/D/Ricardo/Google Drive/Study/Self Driving Car Nanodegree/Term 3/CarND-Path-Planning-Project/src/Eigen-3.3/test/main.h",
 		"/D/Ricardo/Google Drive/Study/Self Driving Car Nanodegree/Term 3/CarND-Path-Planning-Project/src/test.cpp",
-		"/D/Ricardo/Google Drive/Study/Self Driving Car Nanodegree/Term 3/CarND-Path-Planning-Project/src/test.h",
 		"/D/Ricardo/Google Drive/Study/Self Driving Car Nanodegree/Term 3/CarND-Path-Planning-Project/src/Eigen-3.3/point.h",
 		"/D/Ricardo/Google Drive/Study/Self Driving Car Nanodegree/Term 3/CarND-Path-Planning-Project/path_planning.sublime-project",
-		"/D/Ricardo/Google Drive/Study/Self Driving Car Nanodegree/Term 3/CarND-Path-Planning-Project/README.md",
 		"/D/Ricardo/Google Drive/Study/Self Driving Car Nanodegree/Term 3/L1,2,3,4,5,6 Path Planning/L4/behavior_planner/src/road.h",
 		"/D/Ricardo/Google Drive/Study/Self Driving Car Nanodegree/Term 3/L1,2,3,4,5,6 Path Planning/L4/behavior_planner/src/vehicle.cpp",
 		"/D/Ricardo/Google Drive/Study/Self Driving Car Nanodegree/Term 3/L1,2,3,4,5,6 Path Planning/L4/behavior_planner/src/road.cpp",
@@ -255,6 +248,32 @@
 		"case_sensitive": true,
 		"find_history":
 		[
+			"car.",
+			".print",
+			"string",
+			"strin",
+			"#include <string>",
+			"#include <string",
+			"string",
+			"str",
+			"print",
+			"print(",
+			"cout",
+			"getFrenet",
+			"NextWaypoint",
+			"ClosestWaypoint",
+			"next_vals",
+			"tk",
+			"getXY",
+			"previous_path",
+			"ref_vel",
+			"ve",
+			"vector",
+			"lane",
+			"car",
+			"int prev_size",
+			"vector",
+			"vect",
 			"assert",
 			"m_x[i]<m_x[i+1]",
 			"Assertion `m_x[i]<m_x[i+1]' failed",
@@ -292,6 +311,9 @@
 		"regex": false,
 		"replace_history":
 		[
+			"car.ref_vel",
+			"std::ve",
+			"std::vector",
 			"this->",
 			"json_msg",
 			"car.yaw",
@@ -300,13 +322,13 @@
 		"reverse": false,
 		"show_context": true,
 		"use_buffer2": true,
-		"whole_word": true,
+		"whole_word": false,
 		"wrap": true
 	},
 	"groups":
 	[
 		{
-			"selected": 0,
+			"selected": 2,
 			"sheets":
 			[
 				{
@@ -315,15 +337,15 @@
 					"semi_transient": false,
 					"settings":
 					{
-						"buffer_size": 13770,
+						"buffer_size": 9046,
 						"regions":
 						{
 						},
 						"selection":
 						[
 							[
-								6458,
-								6458
+								6902,
+								6902
 							]
 						],
 						"settings":
@@ -334,198 +356,27 @@
 							"word_wrap": true
 						},
 						"translation.x": 0.0,
-						"translation.y": 1931.0,
-						"zoom_level": 1.0
-					},
-					"stack_index": 0,
-					"type": "text"
-				},
-				{
-					"buffer": 1,
-					"file": "src/spline.h",
-					"semi_transient": false,
-					"settings":
-					{
-						"buffer_size": 14172,
-						"regions":
-						{
-						},
-						"selection":
-						[
-							[
-								1033,
-								1033
-							]
-						],
-						"settings":
-						{
-							"syntax": "Packages/C++/C++.sublime-syntax",
-							"tab_size": 4,
-							"translate_tabs_to_spaces": true
-						},
-						"translation.x": 0.0,
-						"translation.y": 0.0,
+						"translation.y": 3067.0,
 						"zoom_level": 1.0
 					},
 					"stack_index": 1,
 					"type": "text"
 				},
 				{
-					"buffer": 2,
-					"file": "src/helpers.cpp",
+					"buffer": 1,
+					"file": "src/behavior_planner.h",
 					"semi_transient": false,
 					"settings":
 					{
-						"buffer_size": 303,
+						"buffer_size": 1410,
 						"regions":
 						{
 						},
 						"selection":
 						[
 							[
-								272,
-								272
-							]
-						],
-						"settings":
-						{
-							"syntax": "Packages/C++/C++.sublime-syntax"
-						},
-						"translation.x": 0.0,
-						"translation.y": 0.0,
-						"zoom_level": 1.0
-					},
-					"stack_index": 5,
-					"type": "text"
-				},
-				{
-					"buffer": 3,
-					"file": "src/helpers.h",
-					"semi_transient": false,
-					"settings":
-					{
-						"buffer_size": 55,
-						"regions":
-						{
-						},
-						"selection":
-						[
-							[
-								10,
-								10
-							]
-						],
-						"settings":
-						{
-							"syntax": "Packages/C++/C++.sublime-syntax"
-						},
-						"translation.x": 0.0,
-						"translation.y": 0.0,
-						"zoom_level": 1.0
-					},
-					"stack_index": 4,
-					"type": "text"
-				},
-				{
-					"buffer": 4,
-					"file": "src/point.cpp",
-					"semi_transient": false,
-					"settings":
-					{
-						"buffer_size": 1365,
-						"regions":
-						{
-						},
-						"selection":
-						[
-							[
-								1337,
-								1337
-							]
-						],
-						"settings":
-						{
-							"syntax": "Packages/C++/C++.sublime-syntax"
-						},
-						"translation.x": 0.0,
-						"translation.y": 839.0,
-						"zoom_level": 1.0
-					},
-					"stack_index": 2,
-					"type": "text"
-				},
-				{
-					"buffer": 5,
-					"file": "src/point.h",
-					"semi_transient": false,
-					"settings":
-					{
-						"buffer_size": 1733,
-						"regions":
-						{
-						},
-						"selection":
-						[
-							[
-								1464,
-								1464
-							]
-						],
-						"settings":
-						{
-							"syntax": "Packages/C++/C++.sublime-syntax",
-							"translate_tabs_to_spaces": false
-						},
-						"translation.x": 0.0,
-						"translation.y": 517.0,
-						"zoom_level": 1.0
-					},
-					"stack_index": 3,
-					"type": "text"
-				},
-				{
-					"buffer": 6,
-					"file": "src/road.cpp",
-					"semi_transient": false,
-					"settings":
-					{
-						"buffer_size": 17,
-						"regions":
-						{
-						},
-						"selection":
-						[
-							[
-								16,
-								16
-							]
-						],
-						"settings":
-						{
-							"syntax": "Packages/C++/C++.sublime-syntax"
-						},
-						"translation.x": 0.0,
-						"translation.y": 0.0,
-						"zoom_level": 1.0
-					},
-					"stack_index": 7,
-					"type": "text"
-				},
-				{
-					"buffer": 7,
-					"file": "src/road.h",
-					"semi_transient": false,
-					"settings":
-					{
-						"buffer_size": 608,
-						"regions":
-						{
-						},
-						"selection":
-						[
-							[
-								608,
-								608
+								1046,
+								1046
 							]
 						],
 						"settings":
@@ -538,35 +389,142 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 8,
+					"stack_index": 2,
 					"type": "text"
 				},
 				{
-					"buffer": 8,
-					"file": "CMakeLists.txt",
+					"buffer": 2,
+					"file": "src/behavior_planner.cpp",
 					"semi_transient": false,
 					"settings":
 					{
-						"buffer_size": 618,
+						"buffer_size": 5993,
 						"regions":
 						{
 						},
 						"selection":
 						[
 							[
-								206,
-								206
+								5045,
+								5045
 							]
 						],
 						"settings":
 						{
-							"syntax": "Packages/Text/Plain text.tmLanguage"
+							"syntax": "Packages/C++/C++.sublime-syntax"
 						},
 						"translation.x": 0.0,
-						"translation.y": 112.0,
+						"translation.y": 1512.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 6,
+					"stack_index": 0,
+					"type": "text"
+				},
+				{
+					"buffer": 3,
+					"file": "src/point.cpp",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 1514,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								38,
+								38
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/C++/C++.sublime-syntax"
+						},
+						"translation.x": 0.0,
+						"translation.y": 504.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 3,
+					"type": "text"
+				},
+				{
+					"buffer": 4,
+					"file": "src/point.h",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 1839,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								462,
+								462
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/C++/C++.sublime-syntax",
+							"translate_tabs_to_spaces": false
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 4,
+					"type": "text"
+				},
+				{
+					"buffer": 5,
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 444,
+						"regions":
+						{
+							"match":
+							{
+								"flags": 112,
+								"regions":
+								[
+									[
+										261,
+										267
+									],
+									[
+										390,
+										396
+									]
+								],
+								"scope": ""
+							}
+						},
+						"selection":
+						[
+							[
+								263,
+								263
+							]
+						],
+						"settings":
+						{
+							"detect_indentation": false,
+							"line_numbers": false,
+							"output_tag": 1,
+							"result_base_dir": "",
+							"result_file_regex": "^([^ \t].*):$",
+							"result_line_regex": "^ +([0-9]+):",
+							"scroll_past_end": true,
+							"syntax": "Packages/Default/Find Results.hidden-tmLanguage"
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 5,
 					"type": "text"
 				}
 			]
@@ -611,7 +569,7 @@
 	"project": "path_planning.sublime-project",
 	"replace":
 	{
-		"height": 72.0
+		"height": 42.0
 	},
 	"save_all_on_build": true,
 	"select_file":

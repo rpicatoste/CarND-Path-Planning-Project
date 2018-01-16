@@ -3,6 +3,7 @@
 #define POINT_H
 
 #include <vector>
+#include <string>
 
 class Point{
 
@@ -17,6 +18,10 @@ public:
 
 	double speed;
 
+
+	int lane;
+	double ref_vel;
+
 	// Point(const Point &point);
 
 	Point();
@@ -27,7 +32,7 @@ public:
 
 	virtual ~Point();
 
-	void print(void);
+	void print(std::string text = "");
 
 	double distance(Point p1);
 	double distance(Point p1, Point p2);

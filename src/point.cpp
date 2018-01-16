@@ -6,7 +6,7 @@
 
 Point::Point()
 {
-
+	this->ref_vel = 0.0;
 }
 
 Point::Point(std::vector<double> xy)
@@ -14,6 +14,7 @@ Point::Point(std::vector<double> xy)
 	this->x = xy[0];
 	this->y = xy[1];
 
+	this->ref_vel = 0.0;
 }
 
 Point::Point(double x, double y)
@@ -21,6 +22,7 @@ Point::Point(double x, double y)
 	this->x = x;
 	this->y = y;
 
+	this->ref_vel = 0.0;
 }
 
 Point::Point(double x, double y, double s, double d)
@@ -30,6 +32,7 @@ Point::Point(double x, double y, double s, double d)
 	this->s  = s;
 	this->d  = d;
 
+	this->ref_vel = 0.0;
 }
 
 Point::Point(double x, double y, double s, double d, double yaw_deg, double speed)
@@ -43,6 +46,7 @@ Point::Point(double x, double y, double s, double d, double yaw_deg, double spee
 
 	this->speed = speed;
 
+	this->ref_vel = 0.0;
 }
 
 // Point::Point(const Point &point)
@@ -57,9 +61,10 @@ Point::~Point()
 }
 
 
-void Point::print(void)
+void Point::print(std::string text)
 {
-	std::cout << "Point (x: " << this->x << ", y: " << this->y << ", s: " << this->s << ", d: " << this->d  << ", yaw_deg: " << this->yaw_deg << std::endl;
+	std::cout << text;
+	std::cout << "Point (x: " << this->x << ", y: " << this->y << ", s: " << this->s << ", d: " << this->d  << ", yaw_deg: " << this->yaw_deg << ")." << std::endl;
 
 }
 

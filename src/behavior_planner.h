@@ -10,7 +10,16 @@ class BehaviorPlanner {
 
   public:
 
-  	std::vector<Point> plan_next_position(std::vector<Point> previous_path, Point end_path, std::vector<SensorFusionPoint> sensor_fusion_points);
+  	std::vector<Point> plan_next_position(Point &car, 
+                                          std::vector<Point> previous_path, 
+                                          Point end_path,
+                                          std::vector<SensorFusionPoint> sensor_fusion_points,
+                                          std::vector<double> map_waypoints_x,
+                                          std::vector<double> map_waypoints_y,
+                                          std::vector<double> map_waypoints_s);
+
+    std::vector<double> getXY(double s, double d, const std::vector<double> &maps_s, const std::vector<double> &maps_x, const std::vector<double> &maps_y);
+
 /*
   	string ego_rep = " *** ";
 
