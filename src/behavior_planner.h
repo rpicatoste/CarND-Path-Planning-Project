@@ -2,8 +2,9 @@
 #ifndef BEHAVIOR_PLANNER_H
 #define BEHAVIOR_PLANNER_H
 
-#include "point.h"
 #include <vector>
+
+#include "point.h"
 #include "sensor_fusion_point.h"
 
 class BehaviorPlanner {

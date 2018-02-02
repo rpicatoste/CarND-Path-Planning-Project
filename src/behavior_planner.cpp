@@ -3,6 +3,8 @@
 #include <iostream>
 #include <vector>
 #include <math.h>
+#include <map>
+#include "point.h"
 
 #include "spline.h"
 
@@ -11,31 +13,71 @@ constexpr double pi() { return M_PI; }
 std::vector<Point> BehaviorPlanner::plan_next_position(	Point &car, 
 														std::vector<Point> previous_path, 
 														Point end_path,
-														std::vector<SensorFusionPoint> sensor_fusion_points,
+														std::vector<SensorFusionPoint> vehicles,
+														//std::map<int, std::vector<SensorFusionPoint>> vehicles,
 														std::vector<double> map_waypoints_x,
 														std::vector<double> map_waypoints_y,
 														std::vector<double> map_waypoints_s)
 {
 
-	std::cout << "Entering planner" << std::endl;
+	std::cout << "Entering planner. Number of vehicles: " << vehicles.size() << std::endl;
 
     int prev_size = previous_path.size();
     if(prev_size > 0){
     	car.s = end_path.s;
     }
 
+    // ********************************************************************************************************************
+
+	// For each vehicle, generate the prediction of the path and store in predictions
+    std::map<int ,std::vector<Point> > predictions;
+
+    std::vector<SensorFusionPoint>::iterator it = vehicles.begin();
+    int v_counter = 0;
+    while(it != vehicles.end())
+    {
+        int v_id 		  = v_counter;
+        std::vector<SensorFusionPoint> predictions_fusion_points = it->generate_predictions();
+        std::vector<Point> preds;
+        for(int ii = 0; ii < predictions_fusion_points.size(); ii++){
+        	Point new_point = Point(predictions_fusion_points[ii]);
+        	preds.push_back(new_point);
+        }
+        predictions[v_id] = preds;
+        it++;
+        v_counter++;
+
+        std::string pred_text = "";
+        for(int jj = 0; jj<preds.size(); jj++){
+        	pred_text += "(" + preds[jj].relative_to_string(car) + ")";
+        }
+        printf("  Car %02d. Preds: %s\n", v_id, pred_text.c_str() );
+    }
+
+    // Choose next state
+	//vector<Vehicle> trajectory = it->second.choose_next_state(predictions);
+    car.choose_next_state(predictions);
+    //it->second.realize_next_state(trajectory);
+
+	// 1. successor_states()
+    //vector<string> possible_succesor_states = successor_states();
+
+
+
+
+    // ********************************************************************************************************************
     bool too_close = false;
 
     // Find ref_v to use
-    for(int ii = 0; ii < sensor_fusion_points.size(); ii++){
+    for(int ii = 0; ii < vehicles.size(); ii++){
 
       // Car is in my car.lane
-    	if(sensor_fusion_points[ii].d < (2 + 4.0*car.lane + 2) && sensor_fusion_points[ii].d > (2 + 4*car.lane - 2)){
+    	if(vehicles[ii].d < (2 + 4.0*car.lane + 2) && vehicles[ii].d > (2 + 4*car.lane - 2)){
 
 	        // If using previous points can project s value out 
-	        sensor_fusion_points[ii].s += ((double)prev_size*0.02*sensor_fusion_points[ii].speed);
+    		vehicles[ii].s += ((double)prev_size*0.02*vehicles[ii].speed);
 	        // Check s values greater than mine and s gap
-	        if((sensor_fusion_points[ii].s > car.s) && ((sensor_fusion_points[ii].s - car.s) < 30)){
+	        if((vehicles[ii].s > car.s) && ((vehicles[ii].s - car.s) < 30)){
 	          
 	        	too_close = true;
 	        	if(car.lane > 0){
@@ -54,10 +96,14 @@ std::vector<Point> BehaviorPlanner::plan_next_position(	Point &car,
     }
 
 
+    // ********************************************************************************************************************
+
+
+
+
   	// TODO: define a path made up of (x,y) points that the car will visit sequentially every .02 seconds
     // Create very spaced (30m) waypoints, then interpolate with spline.
     std::vector<Point> pts;
-
 
     Point ref = Point();
 
@@ -169,8 +215,13 @@ std::vector<Point> BehaviorPlanner::plan_next_position(	Point &car,
 
 
 
+
 // Transform from Frenet s,d coordinates to Cartesian x,y
-std::vector<double> BehaviorPlanner::getXY(double s, double d, const std::vector<double> &maps_s, const std::vector<double> &maps_x, const std::vector<double> &maps_y)
+std::vector<double> BehaviorPlanner::getXY(	double s,
+											double d,
+											const std::vector<double> &maps_s,
+											const std::vector<double> &maps_x,
+											const std::vector<double> &maps_y)
 {
 	int prev_wp = -1;
 

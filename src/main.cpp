@@ -20,6 +20,8 @@
 
 using namespace std;
 
+
+
 // for convenience
 using json = nlohmann::json;
 
@@ -144,11 +146,16 @@ vector<double> getFrenet(double x, double y, double theta, const vector<double> 
 
 }
 
+vector<double> *global_p_map_waypoints_x;
+vector<double> *global_p_map_waypoints_y;
+vector<double> *global_p_map_waypoints_s;
+
 
 int main() {
   uWS::Hub h;
 
   // Load up map values for waypoint's x,y,s and d normalized normal vectors
+
   vector<double> map_waypoints_x;
   vector<double> map_waypoints_y;
   vector<double> map_waypoints_s;
@@ -181,7 +188,9 @@ int main() {
   	map_waypoints_dx.push_back(d_x);
   	map_waypoints_dy.push_back(d_y);
   }
-
+  global_p_map_waypoints_x = &map_waypoints_x;
+  global_p_map_waypoints_y = &map_waypoints_y;
+  global_p_map_waypoints_s = &map_waypoints_s;
 
   // Have a reference velocity to target
   double ref_vel = 0.0; // mph
@@ -215,7 +224,7 @@ int main() {
             car.s = json_msg[1]["s"];
             car.d = json_msg[1]["d"];
             car.yaw_rad = json_msg[1]["yaw"];
-            car.speed = json_msg[1]["speed"];
+            car.v = json_msg[1]["speed"];
 
           	// Previous path data given to the Planner
           	auto previous_path_x = json_msg[1]["previous_path_x"];

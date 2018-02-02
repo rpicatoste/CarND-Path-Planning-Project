@@ -1,7 +1,6 @@
 #ifndef SENSOR_FUSION_POINT_H
 #define SENSOR_FUSION_POINT_H
-// #include "point.h"
-// #include <vector>
+#include <vector>
 
 class SensorFusionPoint {
 
@@ -12,7 +11,14 @@ class SensorFusionPoint {
     double vy;
     double speed;
     double s;
-              
+
+    std::vector<SensorFusionPoint> generate_predictions(void){
+    	std::vector<SensorFusionPoint> predictions;
+
+    	predictions.push_back(*this);
+
+    	return predictions;
+    };
 };
 
 #endif 
