@@ -15,6 +15,7 @@ class SensorFusionPoint {
     std::vector<SensorFusionPoint> generate_predictions(void){
     	std::vector<SensorFusionPoint> predictions;
 
+    	// TODO add at least the position plus the speed*sampling time.
     	predictions.push_back(*this);
 
     	return predictions;

@@ -4,16 +4,16 @@
 
 #include <vector>
 
-#include "point.h"
 #include "sensor_fusion_point.h"
+#include "vehicle.h"
 
 class BehaviorPlanner {
 
   public:
 
-  	std::vector<Point> plan_next_position(Point &car, 
-                                          std::vector<Point> previous_path, 
-                                          Point end_path,
+  	std::vector<Vehicle> plan_next_position(Vehicle &car, 
+                                          std::vector<Vehicle> previous_path, 
+                                          Vehicle end_path,
                                           std::vector<SensorFusionPoint> sensor_fusion_points,
                                           std::vector<double> map_waypoints_x,
                                           std::vector<double> map_waypoints_y,

@@ -1,22 +1,23 @@
-#include <fstream>
-#include <math.h>
-#include <uWS/uWS.h>
 #include <chrono>
+#include <fstream>
 #include <iostream>
+#include <math.h>
 #include <thread>
+#include <unistd.h>
+#include <uWS/uWS.h>
 #include <vector>
-#include "json.hpp"
 
+#include "json.hpp"
 #include "Eigen-3.3/Eigen/Core"
 #include "Eigen-3.3/Eigen/QR"
 
-#include <unistd.h>
-#include "road.h"
-#include "point.h"
-#include "test.h"
-#include "helpers.h"
-#include "sensor_fusion_point.h"
 #include "behavior_planner.h"
+#include "helpers.h"
+#include "main_constants.h"
+#include "road.h"
+#include "sensor_fusion_point.h"
+#include "test.h"
+#include "vehicle.h"
 
 using namespace std;
 
@@ -165,7 +166,7 @@ int main() {
   // Waypoint map to read from
   string map_file_ = "../data/highway_map.csv";
   // The max s value before wrapping around the track back to 0
-  double max_s = 6945.554;
+  double max_s = GOAL_S;
 
   ifstream in_map_(map_file_.c_str(), ifstream::in);
 
@@ -192,14 +193,20 @@ int main() {
   global_p_map_waypoints_y = &map_waypoints_y;
   global_p_map_waypoints_s = &map_waypoints_s;
 
-  // Have a reference velocity to target
-  double ref_vel = 0.0; // mph
   // Start in lane 1
-  int lane = 1;
-  Point car = Point();
-  car.lane = lane;
+  int lane = START_LANE;
+  Vehicle car = Vehicle();
+  car.desired_lane = lane;
 
-  h.onMessage([&car, &ref_vel, &lane, &map_waypoints_x, &map_waypoints_y, &map_waypoints_s, &map_waypoints_dx, &map_waypoints_dy](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
+	vector<int> car_config = {	SPEED_LIMIT_MPH,
+								NUM_LANES,
+								GOAL_S,
+								GOAL_LANE,
+								MAX_ACCELERATION_METER_S2};
+
+	car.configure(car_config);
+
+  h.onMessage([&car, &lane, &map_waypoints_x, &map_waypoints_y, &map_waypoints_s, &map_waypoints_dx, &map_waypoints_dy](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
                      uWS::OpCode opCode) {
     // "42" at the start of the message means there's a websocket message event.
     // The 4 signifies a websocket message
@@ -224,7 +231,7 @@ int main() {
             car.s = json_msg[1]["s"];
             car.d = json_msg[1]["d"];
             car.yaw_rad = json_msg[1]["yaw"];
-            car.v = json_msg[1]["speed"];
+            car.current_velocity = json_msg[1]["speed"];
 
           	// Previous path data given to the Planner
           	auto previous_path_x = json_msg[1]["previous_path_x"];
@@ -232,13 +239,13 @@ int main() {
 
             int prev_size = previous_path_x.size();
 
-            vector<Point> previous_path;
+            vector<Vehicle> previous_path;
             for( int ii = 0; ii<prev_size; ii++){
-              previous_path.push_back( Point(previous_path_x[ii], previous_path_y[ii]) );
+              previous_path.push_back( Vehicle(previous_path_x[ii], previous_path_y[ii]) );
             }
 
           	// Previous path's end s and d values 
-            Point end_path = Point(0.0, 0.0, json_msg[1]["end_path_s"], json_msg[1]["end_path_d"]);
+            Vehicle end_path = Vehicle(0.0, 0.0, json_msg[1]["end_path_s"], json_msg[1]["end_path_d"]);
 
           	// Sensor Fusion Data, a list of all other cars on the same side of the road.
           	auto sensor_fusion = json_msg[1]["sensor_fusion"];
@@ -257,7 +264,7 @@ int main() {
             }
 
             BehaviorPlanner behavior_planner = BehaviorPlanner();
-            vector<Point> next_vals = behavior_planner.plan_next_position(car, 
+            vector<Vehicle> next_vals = behavior_planner.plan_next_position(car, 
                                                                           previous_path, 
                                                                           end_path, 
                                                                           sensor_fusion_points,
@@ -265,20 +272,10 @@ int main() {
                                                                           map_waypoints_y,
                                                                           map_waypoints_s);
 
-
-            // inputs
-            // vector<Point> previous_path
-            // Point end_path
-            // vector<SensorFusionPoint> sensor_fusion_points
-            // --------------------------------------------------------------
-
-            // --------------------------------------------------------------
-            // output
-            //  vector<Point> next_vals;
             json msgJson;
 
-          	msgJson["next_x"] = Point::get_vector_x_from_list(next_vals);
-          	msgJson["next_y"] = Point::get_vector_y_from_list(next_vals);
+          	msgJson["next_x"] = Vehicle::get_vector_x_from_list(next_vals);
+          	msgJson["next_y"] = Vehicle::get_vector_y_from_list(next_vals);
 
           	auto msg = "42[\"control\","+ msgJson.dump()+"]";
 
