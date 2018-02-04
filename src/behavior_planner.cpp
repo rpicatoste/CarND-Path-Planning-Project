@@ -20,7 +20,8 @@ std::vector<Vehicle> BehaviorPlanner::plan_next_position(	Vehicle &car,
 															std::vector<double> map_waypoints_y,
 															std::vector<double> map_waypoints_s)
 {
-	printf("Entering planner. Number of vehicles: %d\n",  other_cars.size());
+	printf("\n----------- Entering planner. Current reference lane: %d. Speed: % 3.0f Number of vehicles: %d -----------\n\n",
+			car.reference_lane, car.velocity, other_cars.size());
 
     int prev_size = previous_path.size();
     if(prev_size > 0){
@@ -106,7 +107,12 @@ std::vector<Vehicle> BehaviorPlanner::plan_next_position(	Vehicle &car,
 
     printf("(After ) Car desired lane: %d, desired speed: %f\n", car.reference_lane, car.velocity);
 */
-    car.velocity += 0.224;
+    // TODO if we don't give an initial speed, this crashed in the spline generation.
+    if(car.velocity < SPEED_LIMIT_MPH/2.5-0.5){
+    //if(car.s < 130.0){
+    	car.velocity += 0.224;
+    }
+    printf("Car s: %f\n", car.s);
     // ********************************************************************************************************************
 
 
@@ -114,83 +120,113 @@ std::vector<Vehicle> BehaviorPlanner::plan_next_position(	Vehicle &car,
 
   	// TODO: define a path made up of (x,y) points that the car will visit sequentially every .02 seconds
     // Create very spaced (30m) waypoints, then interpolate with spline.
-    std::vector<Vehicle> pts;
+    std::vector<Vehicle> next_waypoints_raw;
+    Vehicle reference_point = Vehicle();
 
-    Vehicle ref = Vehicle();
 
     if(prev_size < 2){
 		// Use 2 points that make the path tangent to the car.
-		ref.x = car.x;
-	    ref.y = car.y;
-	    ref.yaw_rad = car.yaw_rad;
-	    ref.yaw_deg = car.yaw_deg;
+		reference_point.x = car.x;
+	    reference_point.y = car.y;
+	    reference_point.yaw_rad = car.yaw_rad;
+	    reference_point.yaw_deg = car.yaw_deg;
 
 		Vehicle prev_car = Vehicle();
 		prev_car.x = car.x - cos(car.yaw_rad);
 		prev_car.y = car.y - sin(car.yaw_rad);              
 
-		pts.push_back(prev_car);
-		pts.push_back(car);              
+		next_waypoints_raw.push_back(prev_car);
+		next_waypoints_raw.push_back(car);              
 
     }
-    // use the previous path's end point as starting reference
+    // Use the previous path's end point as starting reference
     else{
-		// Redefine
-		ref.x = previous_path[prev_size-1].x;
-		ref.y = previous_path[prev_size-1].y;
+    	reference_point.x = previous_path[prev_size-1].x;
+		reference_point.y = previous_path[prev_size-1].y;
 
 		Vehicle ref_prev = Vehicle();
 		ref_prev.x = previous_path[prev_size-2].x;
 		ref_prev.y = previous_path[prev_size-2].y;
 
-		ref.yaw_rad = atan2(ref.y - ref_prev.y, ref.x - ref_prev.x );
-		ref.yaw_deg = ref.yaw_rad * 180.0 / M_PI;
+		reference_point.yaw_rad = atan2(reference_point.y - ref_prev.y, reference_point.x - ref_prev.x );
+		reference_point.yaw_deg = reference_point.yaw_rad * 180.0 / M_PI;
 
 		// Use 2 points that make the path tangent to the previous path's end point
-		pts.push_back(ref_prev);
-		pts.push_back(ref);              
-
+		next_waypoints_raw.push_back(ref_prev);
+		next_waypoints_raw.push_back(reference_point);
     }
-    Vehicle next_wp0 = Vehicle( getXY(car.s + 30,
-                                  (2+4*car.reference_lane),
-                                  map_waypoints_s,
-                                  map_waypoints_x,
-                                  map_waypoints_y) ); 
-    Vehicle next_wp1 = Vehicle( getXY(car.s + 60,
-                                  (2+4*car.reference_lane),
-                                  map_waypoints_s,
-                                  map_waypoints_x,
-                                  map_waypoints_y) );
-    Vehicle next_wp2 = Vehicle( getXY(car.s + 90,
-                                  (2+4*car.reference_lane),
-                                  map_waypoints_s,
-                                  map_waypoints_x,
-                                  map_waypoints_y) );
 
-    pts.push_back(next_wp0);            
-    pts.push_back(next_wp1);
-    pts.push_back(next_wp2);
 
-    for(int ii = 0; ii < pts.size(); ii++){
+    // At 50 mph, the distance_to_next_waypoint is 30.0 meters.
+    float distance_to_next_waypoint = car.velocity * 3.0/5.0;
+    const float min_distance_to_next_waypoint = 3.0;
+    distance_to_next_waypoint = (distance_to_next_waypoint > min_distance_to_next_waypoint) ? distance_to_next_waypoint : min_distance_to_next_waypoint;
+
+
+    Vehicle next_wp0 = Vehicle( getXY(car.s + distance_to_next_waypoint,
+									  (2+4*car.reference_lane),
+									  map_waypoints_s,
+									  map_waypoints_x,
+									  map_waypoints_y) );
+    Vehicle next_wp1 = Vehicle( getXY(car.s + 2*distance_to_next_waypoint,
+									  (2+4*car.reference_lane),
+									  map_waypoints_s,
+									  map_waypoints_x,
+									  map_waypoints_y) );
+    Vehicle next_wp2 = Vehicle( getXY(car.s + 3*distance_to_next_waypoint,
+									  (2+4*car.reference_lane),
+									  map_waypoints_s,
+									  map_waypoints_x,
+									  map_waypoints_y) );
+
+    next_waypoints_raw.push_back(next_wp0);            
+    next_waypoints_raw.push_back(next_wp1);
+    next_waypoints_raw.push_back(next_wp2);
+
+    // Make waypoints relative to reference_point.
+    for(int ii = 0; ii < next_waypoints_raw.size(); ii++){
 		Vehicle shift = Vehicle();
-		shift = pts[ii] - ref;
-		pts[ii] = shift.rotate_by_angle(-ref.yaw_rad);
+
+		shift = next_waypoints_raw[ii] - reference_point;
+		next_waypoints_raw[ii] = shift.rotate_by_angle(-reference_point.yaw_rad);
+
+		next_waypoints_raw[ii].print("New waypoints relative: ");
     }
 
+    std::vector<Vehicle> next_waypoints_for_the_simulator;
+    next_waypoints_for_the_simulator = convert_raw_waypoints_to_simulator_waypoints(
+    		car,
+			reference_point,
+    		next_waypoints_raw,
+    		previous_path);
+
+	return next_waypoints_for_the_simulator;
+}
+
+
+
+
+
+std::vector<Vehicle> BehaviorPlanner::convert_raw_waypoints_to_simulator_waypoints(
+		Vehicle &car,
+		Vehicle reference_point,
+		std::vector<Vehicle> next_waypoints_raw,
+		std::vector<Vehicle> previous_path)
+{
     // Create a spline
     tk:: spline my_spline;
 
     // Set (x,y) points to the spline
-    my_spline.set_points( Vehicle::get_vector_x_from_list(pts), 
-                          Vehicle::get_vector_y_from_list(pts));
+    my_spline.set_points( Vehicle::get_vector_x_from_list(next_waypoints_raw), 
+                          Vehicle::get_vector_y_from_list(next_waypoints_raw));
 
     // Define the actual (x,y) points we will use for the planner
-    std::vector<Vehicle> next_vals;
+    std::vector<Vehicle> next_waypoints_for_the_simulator;
 
     // Start with all of the previous path points from last time
     for (int ii = 0; ii < previous_path.size(); ii++){
 		Vehicle new_point = Vehicle(previous_path[ii].x, previous_path[ii].y);
-		next_vals.push_back(new_point);
+		next_waypoints_for_the_simulator.push_back(new_point);
 	}
 
     // Calculate hot to break up spline points so that we travel at our desired reference velocity
@@ -211,17 +247,14 @@ std::vector<Vehicle> BehaviorPlanner::plan_next_position(	Vehicle &car,
 		x_add_on = point.x;
 
 		// Rotates back to normal after rotating it earlier
-		point = point.rotate_by_angle(ref.yaw_rad);
-		point = point + ref;
+		point = point.rotate_by_angle(reference_point.yaw_rad);
+		point = point + reference_point;
 
-		next_vals.push_back(point);
-
+		next_waypoints_for_the_simulator.push_back(point);
     }
 
-	return next_vals;
+    return next_waypoints_for_the_simulator;
 }
-
-
 
 
 // Transform from Frenet s,d coordinates to Cartesian x,y

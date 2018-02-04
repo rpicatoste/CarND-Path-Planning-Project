@@ -105,9 +105,8 @@ Vehicle::~Vehicle()
 
 void Vehicle::print(std::string text)
 {
-	std::cout << text;
-	std::cout << "Point (x: " << this->x << ", y: " << this->y << ", s: " << this->s << ", d: " << this->d  << ", yaw_deg: " << this->yaw_deg << ")." << std::endl;
-
+	printf("%sPoint (x: % 7.1f, y: % 7.1f, s: % 7.1f, d: % 4.1f, yaw_deg: % 6.1f).\n",
+			text.c_str(), this->x, this->y, this->s, this->d, this->yaw_deg);
 }
 
 
@@ -287,34 +286,44 @@ std::vector<std::string> Vehicle::successor_states() {
     discussed in the course, with the exception that lane changes happen
     instantaneously, so LCL and LCR can only transition back to KL.
     */
-    std::vector<std::string> states;
-    states.push_back("KL");
-    std::string state = this->state;
+    std::vector<std::string> possible_next_states;
+    std::string state;
+
+
+    state = this->state;
+    possible_next_states.push_back("KL");
+
+    bool we_are_not_in_the_rightmost_lane = reference_lane != lanes_available - 1;
+    bool we_are_not_in_the_leftmost_lane = reference_lane != 0;
+
+// TODO testing only keep lane.
+    return possible_next_states;
+
 
     if(state.compare("KL") == 0 || state.compare("LCL") == 0 || state.compare("LCR") == 0) {
-        if (reference_lane != lanes_available - 1) {
-        	states.push_back("PLCR");
+        if (we_are_not_in_the_rightmost_lane) {
+        	possible_next_states.push_back("PLCR");
         }
 
-        if (reference_lane != 0) {
-        	states.push_back("PLCL");
+        if (we_are_not_in_the_leftmost_lane) {
+        	possible_next_states.push_back("PLCL");
         }
 
     }
     else if (state.compare("PLCR") == 0) {
-        if (reference_lane != lanes_available - 1) {
-            states.push_back("PLCR");
-            states.push_back("LCR");
+        if (we_are_not_in_the_rightmost_lane) {
+            possible_next_states.push_back("PLCR");
+            possible_next_states.push_back("LCR");
         }
     }
     else if (state.compare("PLCL") == 0) {
-        if (reference_lane != 0) {
-            states.push_back("PLCL");
-            states.push_back("LCL");
+        if (we_are_not_in_the_leftmost_lane) {
+            possible_next_states.push_back("PLCL");
+            possible_next_states.push_back("LCL");
         }
     }
 
-    return states;
+    return possible_next_states;
 }
 
 std::vector<Vehicle> Vehicle::generate_trajectory(	std::string state,

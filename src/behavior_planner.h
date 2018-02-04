@@ -19,7 +19,18 @@ class BehaviorPlanner {
                                           std::vector<double> map_waypoints_y,
                                           std::vector<double> map_waypoints_s);
 
-    std::vector<double> getXY(double s, double d, const std::vector<double> &maps_s, const std::vector<double> &maps_x, const std::vector<double> &maps_y);
+  	std::vector<Vehicle> convert_raw_waypoints_to_simulator_waypoints(
+  			Vehicle &car,
+			Vehicle reference_point,
+  			std::vector<Vehicle> next_waypoints_raw,
+			std::vector<Vehicle> previous_path);
+
+    std::vector<double> getXY(
+    		double s,
+			double d,
+			const std::vector<double> &maps_s,
+			const std::vector<double> &maps_x,
+			const std::vector<double> &maps_y);
 
 /*
   	string ego_rep = " *** ";

@@ -116,7 +116,9 @@ public:
 
 	static std::vector<double> get_vector_x_from_list(std::vector<Vehicle> &list){
 		std::vector<double> new_list;
-		for(std::vector<Vehicle>::iterator p_point = list.begin(); p_point != list.end(); p_point++){
+		std::vector<Vehicle>::iterator p_point;
+
+		for(p_point = list.begin(); p_point != list.end(); p_point++){
 			new_list.push_back(p_point->x);
 		}
 		return new_list;
@@ -124,7 +126,9 @@ public:
 
 	static std::vector<double> get_vector_y_from_list(std::vector<Vehicle> &list){
 		std::vector<double> new_list;
-		for(std::vector<Vehicle>::iterator p_point = list.begin(); p_point != list.end(); p_point++){
+		std::vector<Vehicle>::iterator p_point;
+
+		for(p_point = list.begin(); p_point != list.end(); p_point++){
 			new_list.push_back(p_point->y);
 		}
 		return new_list;
