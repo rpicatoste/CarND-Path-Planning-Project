@@ -195,8 +195,7 @@ int main()
 	vector<int> car_config = {	SPEED_LIMIT_MPH,
 								NUM_LANES,
 								GOAL_S,
-								GOAL_LANE,
-								MAX_ACCELERATION_METER_S2};
+								GOAL_LANE};
 
 	car.configure(car_config);
     BehaviorPlanner behavior_planner = BehaviorPlanner( map_waypoints_x,

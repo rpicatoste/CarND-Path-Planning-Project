@@ -15,10 +15,10 @@ constexpr double pi() { return M_PI; }
 std::vector<Vehicle> BehaviorPlanner::plan_next_position(	Vehicle &car, 
 															std::vector<Vehicle> previous_path,
 															Vehicle end_path,
-															std::vector<SensorFusionPoint> other_cars)
+															std::vector<SensorFusionPoint> other_cars_raw)
 {
 	printf("\n----------- Entering planner. Current reference lane: %d. Speed: % 3.0f Number of vehicles: %d -----------\n\n",
-			car.reference_lane, car.velocity, other_cars.size());
+			car.reference_lane, car.velocity, other_cars_raw.size());
 
     int prev_size = previous_path.size();
     if(prev_size > 0){
@@ -28,47 +28,34 @@ std::vector<Vehicle> BehaviorPlanner::plan_next_position(	Vehicle &car,
     // ********************************************************************************************************************
     // Porting the FSM
 
+    // Convert the SensorFusionPoints to a Vechile list.
+    std::vector<Vehicle> other_cars;
+    for(int ii = 0; ii < other_cars_raw.size() ; ++ii){
+    	other_cars.push_back(Vehicle(other_cars_raw[ii], *this));
+    }
+
 	// For each vehicle, generate the prediction of the path and store in predictions.
     std::map<int ,std::vector<Vehicle> > all_predictions;
-    std::vector<SensorFusionPoint>::iterator p_vehicle;
-    int vehicle_counter = 0;
 
-
-    p_vehicle = other_cars.begin();
-    vehicle_counter = 0;
-    while(p_vehicle != other_cars.end())
+    for(int ii = 0; ii < other_cars.size() ; ++ii)
     {
-		int vehicle_id;
-		std::vector<SensorFusionPoint> predictions_for_current_vehicle_raw;
-        std::vector<Vehicle> predictions_for_current_vehicle;
-
-
-		vehicle_id = vehicle_counter;
-        predictions_for_current_vehicle_raw = p_vehicle->generate_predictions();
-        for(int ii = 0; ii < predictions_for_current_vehicle_raw.size(); ii++){
-        	predictions_for_current_vehicle.push_back(Vehicle(predictions_for_current_vehicle_raw[ii], *this));
-        }
-        all_predictions[vehicle_id] = predictions_for_current_vehicle;
-        p_vehicle++;
-        vehicle_counter++;
+		all_predictions[ii] = other_cars[ii].generate_predictions();
 
         // Print
         std::string pred_text = "";
-        for(int jj = 0; jj<predictions_for_current_vehicle.size(); jj++){
-        	pred_text += "(" + predictions_for_current_vehicle[jj].relative_position_to_string(car) + ")";
+        for(int jj = 0; jj<all_predictions[ii].size(); jj++){
+        	pred_text += "(" + all_predictions[ii][jj].relative_position_to_string(car) + ")";
         }
-        printf("  Car %02d. Preds: %s\n", vehicle_id, pred_text.c_str() );
+        printf("  Car %02d. Preds: %s\n", ii, pred_text.c_str() );
     }
 
     // Choose next state
-	//vector<Vehicle> trajectory = it->second.choose_next_state(predictions);
-    std::vector<Vehicle> trajectory = car.choose_next_state(all_predictions);
+	std::vector<Vehicle> trajectory = car.choose_next_state(all_predictions);
     car.realize_next_state(trajectory);
 
 	// 1. successor_states()
     //vector<string> possible_succesor_states = successor_states();
 
-    printf("(Before) Car desired lane: %d, desired speed: %f\n", car.reference_lane, car.velocity);
 // JUST DECIDE LANE AND REF_VEL. THEY WILL DEPEND ON STATE, AND StATE ON THEM...
 
     // ********************************************************************************************************************

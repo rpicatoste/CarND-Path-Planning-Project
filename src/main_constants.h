@@ -18,9 +18,10 @@
 #define NUM_LANES (3)
 #define	GOAL_S (6945)
 #define	GOAL_LANE (0)
-// In m/s^2 the max is 10
-#define MAX_ACCELERATION_METER_S2 (10)
-#define MAX_ACCELERATION_MILES_S2 (22.3694)
+
+// In m/s^2 the max is 10 (22.37 mphs). With margin 9.5m/s2 (21.25)
+#define MAX_ACCELERATION_METER_S2 (9.5)
+#define MAX_ACCELERATION_MPH (21.25)
 
 
 #define START_LANE (1)
@@ -37,5 +38,7 @@
 #define SAMPLING_TIME_2 (0.0004)
 
 #define M_PER_S_TO_MPH (2.24)
+
+#define CAR_LENGTH (5.0)
 
 #endif /* SRC_MAIN_CONSTANTS_H_ */

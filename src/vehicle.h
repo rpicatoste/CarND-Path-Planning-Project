@@ -35,7 +35,6 @@ public:
 	float target_speed;
 	float goal_s;
 	int lanes_available;
-	float max_acceleration;
 
 
 	int get_current_lane(void);
@@ -48,14 +47,13 @@ public:
 	std::vector<Vehicle> choose_next_state(std::map<int, std::vector<Vehicle>> predictions);
 	std::vector<Vehicle> generate_trajectory(std::string state, std::map<int, std::vector<Vehicle>> predictions);
 	std::vector<Vehicle> constant_speed_trajectory();
-	float position_at(int t);
+	float position_at(float t);
 	std::vector<Vehicle> keep_lane_trajectory(std::map<int, std::vector<Vehicle>> predictions);
 	bool get_vehicle_ahead(std::map<int, std::vector<Vehicle>> predictions, int lane, Vehicle & rVehicle);
 	bool get_vehicle_behind(std::map<int, std::vector<Vehicle>> predictions, int lane, Vehicle & rVehicle);
 	std::vector<float> get_lane_kinematics(std::map<int, std::vector<Vehicle>> predictions, int lane);
 	std::vector<Vehicle> lane_change_trajectory(std::string state, std::map<int, std::vector<Vehicle>> predictions);
 	std::vector<Vehicle> prep_lane_change_trajectory(std::string state, std::map<int, std::vector<Vehicle>> predictions);
-	void print_info(void);
 	void increment(int dt);
     std::vector<Vehicle> generate_predictions(int horizon=2);
     void realize_next_state(std::vector<Vehicle> trajectory);
@@ -72,6 +70,7 @@ public:
 
 	virtual ~Vehicle();
 
+	void print_info(void);
 	void print(std::string text = "");
 
 	double distance(Vehicle p1);
