@@ -94,7 +94,6 @@ std::vector<Vehicle> BehaviorPlanner::plan_next_position(	Vehicle &car,
     	}
     }
 
-    float max_delta_v = MAX_ACCELERATION_MILES_S2*SAMPLING_TIME;
     if(too_close){
     	car.velocity -= 0.224;
     }
@@ -105,11 +104,12 @@ std::vector<Vehicle> BehaviorPlanner::plan_next_position(	Vehicle &car,
     printf("(After ) Car desired lane: %d, desired speed: %f\n", car.reference_lane, car.velocity);
 */
     // TODO if we don't give an initial speed, this crashed in the spline generation.
-    if(car.velocity < SPEED_LIMIT_MPH/2.5-0.5){
+ /*   float max_delta_v = MAX_ACCELERATION_MILES_S2*SAMPLING_TIME;
+    if(car.velocity < SPEED_LIMIT_MPH){
     //if(car.s < 130.0){
-    	car.velocity += 0.224;
+    	car.velocity += max_delta_v;
     }
-    printf("Car s: %f\n", car.s);
+    printf("Car s: %f\n", car.s);*/
     // ********************************************************************************************************************
 
   	// Define a path made up of (x,y) points that the car will visit sequentially every .02 seconds

@@ -32,8 +32,9 @@
 #define LANE_WIDTH (4.0)
 
 
-#define SAMPLING_TIME (0.02)
 #define SAMPLING_RATE (50.0)
+#define SAMPLING_TIME (0.02)
+#define SAMPLING_TIME_2 (0.0004)
 
 #define M_PER_S_TO_MPH (2.24)
 
