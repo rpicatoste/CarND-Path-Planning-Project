@@ -250,20 +250,23 @@ std::vector<Vehicle> Vehicle::choose_next_state(std::map<int, std::vector<Vehicl
 		std::vector<Vehicle> trajectory;
 		float new_cost, inefficiency_cost, goal_distance_cost, lane_distance_cost;
 
+		// 2. Trajectory for each state
 		trajectory = generate_trajectory(*p_candidate_state, predictions);
-
-		if (trajectory.size() != 0) {
-			succesor_states_trajectories.push_back(trajectory);
-
-			std::tie(new_cost, inefficiency_cost, goal_distance_cost, lane_distance_cost)
-													= calculate_cost(*this, predictions, trajectory);
-
-			costs.push_back(new_cost);
-			inefficiency_costs.push_back(inefficiency_cost);
-			goal_distance_costs.push_back(goal_distance_cost);
-			lane_distance_costs.push_back(lane_distance_cost);
-			candidate_states.push_back(*p_candidate_state);
+		if (trajectory.size() == 0) {
+			continue;
 		}
+		succesor_states_trajectories.push_back(trajectory);
+
+		// Cost for each trajectory
+		std::tie(new_cost, inefficiency_cost, goal_distance_cost, lane_distance_cost)
+												= calculate_cost(*this, predictions, trajectory);
+
+		costs.push_back(new_cost);
+		inefficiency_costs.push_back(inefficiency_cost);
+		goal_distance_costs.push_back(goal_distance_cost);
+		lane_distance_costs.push_back(lane_distance_cost);
+		candidate_states.push_back(*p_candidate_state);
+
 	}
 
     std::vector<float>::iterator best_cost = min_element(begin(costs), end(costs));
