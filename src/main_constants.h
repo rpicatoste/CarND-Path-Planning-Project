@@ -19,9 +19,9 @@
 #define	GOAL_S (6945)
 #define	GOAL_LANE (0)
 
-// In m/s^2 the max is 10 (22.37 mphs). With margin 9.5m/s2 (21.25)
-#define MAX_ACCELERATION_METER_S2 (9.5)
-#define MAX_ACCELERATION_MPH (21.25)
+// In m/s^2 the max is 10 (22.37 mphs). With margin 9.5m/s2 (21.25)/8.5(19.0)
+#define MAX_ACCELERATION_METER_S2 (8.5)
+#define MAX_ACCELERATION_MPH (19.0)
 
 
 #define START_LANE (1)
@@ -43,10 +43,9 @@
 #define MPH_TO_M_PER_S (0.446)
 
 #define CAR_LENGTH (5.0)
-#define SAFETY_DISTANCE ()
 
 #define DISTANCE_TO_START_GOING_TO_GOAL_LANE (200.0)
-#define DISTANCE_TO_CONSIDER_CARS_IN_LANE (50.0)
+#define DISTANCE_TO_CONSIDER_CARS_IN_LANE (25.0)
 
 
 

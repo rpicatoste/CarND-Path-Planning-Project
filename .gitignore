@@ -2,3 +2,9 @@ build/
 /Debug/
 /.metadata/
 README_PRIVADO.md
+src/CMakeFiles/CMakeDirectoryInformation.cmake
+src/CMakeFiles/
+src/path_planning
+src/Makefile
+src/cmake_install.cmake
+src/CMakeCache.txt

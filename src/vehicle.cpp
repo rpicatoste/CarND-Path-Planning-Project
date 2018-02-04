@@ -524,7 +524,6 @@ std::vector<Vehicle> Vehicle::prep_lane_change_trajectory(	std::string state,
 
 float calculate_safety_distance(float v_mph)
 {
-    // Meters to have 1 seconds between cars.
     float distance_meters, v_mps;
 
     v_mps = v_mph * MPH_TO_M_PER_S;

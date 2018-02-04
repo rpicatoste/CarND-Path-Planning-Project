@@ -96,11 +96,16 @@ std::vector<Vehicle> BehaviorPlanner::plan_next_position(	Vehicle &car,
     distance_to_next_waypoint = (distance_to_next_waypoint > min_distance_to_next_waypoint) ?
     														distance_to_next_waypoint : min_distance_to_next_waypoint;
 
+    // When the speed of the car is too low, this prevents weird waypoints generation by the spline.
+    if(car.velocity < 3.0){
+        distance_to_next_waypoint = 30.0;
+     }
+
     Vehicle next_wp0 = Vehicle( getXY(car.s +   distance_to_next_waypoint, (2+4*car.reference_lane)) );
     Vehicle next_wp1 = Vehicle( getXY(car.s + 2*distance_to_next_waypoint, (2+4*car.reference_lane)) );
     Vehicle next_wp2 = Vehicle( getXY(car.s + 3*distance_to_next_waypoint, (2+4*car.reference_lane)) );
 
-    next_waypoints_raw.push_back(next_wp0);            
+    next_waypoints_raw.push_back(next_wp0);
     next_waypoints_raw.push_back(next_wp1);
     next_waypoints_raw.push_back(next_wp2);
 
@@ -111,7 +116,7 @@ std::vector<Vehicle> BehaviorPlanner::plan_next_position(	Vehicle &car,
 		shift = next_waypoints_raw[ii] - reference_point;
 		next_waypoints_raw[ii] = shift.rotate_by_angle(-reference_point.yaw_rad);
 
-		// Do not delete, instersting when working on the points passed to the simulation.
+		// Do not delete, interesting when working on the points passed to the simulation.
 		//next_waypoints_raw[ii].print("New waypoints relative: ");
     }
 
