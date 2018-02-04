@@ -1,24 +1,27 @@
-#include <fstream>
-#include <math.h>
-#include <uWS/uWS.h>
 #include <chrono>
+#include <fstream>
 #include <iostream>
+#include <math.h>
 #include <thread>
+#include <unistd.h>
+#include <uWS/uWS.h>
 #include <vector>
-#include "json.hpp"
 
+#include "json.hpp"
 #include "Eigen-3.3/Eigen/Core"
 #include "Eigen-3.3/Eigen/QR"
 
-#include <unistd.h>
-#include "spline.h"
-#include "road.h"
-#include "point.h"
-#include "test.h"
+#include "behavior_planner.h"
 #include "helpers.h"
-
+#include "main_constants.h"
+#include "road.h"
+#include "sensor_fusion_point.h"
+#include "test.h"
+#include "vehicle.h"
 
 using namespace std;
+
+
 
 // for convenience
 using json = nlohmann::json;
@@ -144,286 +147,145 @@ vector<double> getFrenet(double x, double y, double theta, const vector<double> 
 
 }
 
-// Transform from Frenet s,d coordinates to Cartesian x,y
-vector<double> getXY(double s, double d, const vector<double> &maps_s, const vector<double> &maps_x, const vector<double> &maps_y)
-{
-	int prev_wp = -1;
 
-	while(s > maps_s[prev_wp+1] && (prev_wp < (int)(maps_s.size()-1) ))
-	{
-		prev_wp++;
+
+int main()
+{
+	uWS::Hub h;
+
+	// Load up map values for waypoint's x,y,s and d normalized normal vectors
+
+	vector<double> map_waypoints_x;
+	vector<double> map_waypoints_y;
+	vector<double> map_waypoints_s;
+	vector<double> map_waypoints_dx;
+	vector<double> map_waypoints_dy;
+
+	// Waypoint map to read from
+	string map_file_ = "../data/highway_map.csv";
+	// The max s value before wrapping around the track back to 0
+	double max_s = GOAL_S;
+
+	ifstream in_map_(map_file_.c_str(), ifstream::in);
+
+	string line;
+	while (getline(in_map_, line)) {
+		istringstream iss(line);
+		double x;
+		double y;
+		float s;
+		float d_x;
+		float d_y;
+		iss >> x;
+		iss >> y;
+		iss >> s;
+		iss >> d_x;
+		iss >> d_y;
+		map_waypoints_x.push_back(x);
+		map_waypoints_y.push_back(y);
+		map_waypoints_s.push_back(s);
+		map_waypoints_dx.push_back(d_x);
+		map_waypoints_dy.push_back(d_y);
 	}
 
-	int wp2 = (prev_wp+1)%maps_x.size();
+	// Start in lane 1
+	Vehicle car = Vehicle();
+	car.reference_lane = START_LANE;
 
-	double heading = atan2((maps_y[wp2]-maps_y[prev_wp]),(maps_x[wp2]-maps_x[prev_wp]));
-	// the x,y,s along the segment
-	double seg_s = (s-maps_s[prev_wp]);
+	vector<int> car_config = {	SPEED_LIMIT_MPH,
+								NUM_LANES,
+								GOAL_S,
+								GOAL_LANE};
 
-	double seg_x = maps_x[prev_wp]+seg_s*cos(heading);
-	double seg_y = maps_y[prev_wp]+seg_s*sin(heading);
+	car.configure(car_config);
+    BehaviorPlanner behavior_planner = BehaviorPlanner( map_waypoints_x,
+														map_waypoints_y,
+														map_waypoints_s);
 
-	double perp_heading = heading-pi()/2;
+    h.onMessage([&car, &behavior_planner, &map_waypoints_dx, &map_waypoints_dy]
+				 (uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,uWS::OpCode opCode) {
+		// "42" at the start of the message means there's a websocket message event.
+		// The 4 signifies a websocket message
+		// The 2 signifies a websocket event
+		//auto sdata = string(data).substr(0, length);
+		//cout << sdata << endl;
+		if (length && length > 2 && data[0] == '4' && data[1] == '2') {
 
-	double x = seg_x + d*cos(perp_heading);
-	double y = seg_y + d*sin(perp_heading);
+			auto s = hasData(data);
 
-	return {x,y};
+			if (s != "") {
+				auto json_msg = json::parse(s);
 
-}
+				string event = json_msg[0].get<string>();
 
-int main() {
-  uWS::Hub h;
+				if (event == "telemetry") {
+					// json_msg[1] is the data JSON object
 
-  // Load up map values for waypoint's x,y,s and d normalized normal vectors
-  vector<double> map_waypoints_x;
-  vector<double> map_waypoints_y;
-  vector<double> map_waypoints_s;
-  vector<double> map_waypoints_dx;
-  vector<double> map_waypoints_dy;
+					// Main car's localization Data
+					car.x = json_msg[1]["x"];
+					car.y = json_msg[1]["y"];
+					car.s = json_msg[1]["s"];
+					car.d = json_msg[1]["d"];
+					car.yaw_rad = json_msg[1]["yaw"];
+					car.current_velocity = json_msg[1]["speed"];
 
-  // Waypoint map to read from
-  string map_file_ = "../data/highway_map.csv";
-  // The max s value before wrapping around the track back to 0
-  double max_s = 6945.554;
+					// Previous path data given to the Planner
+					auto previous_path_x = json_msg[1]["previous_path_x"];
+					auto previous_path_y = json_msg[1]["previous_path_y"];
 
-  ifstream in_map_(map_file_.c_str(), ifstream::in);
+					int prev_size = previous_path_x.size();
 
-  string line;
-  while (getline(in_map_, line)) {
-  	istringstream iss(line);
-  	double x;
-  	double y;
-  	float s;
-  	float d_x;
-  	float d_y;
-  	iss >> x;
-  	iss >> y;
-  	iss >> s;
-  	iss >> d_x;
-  	iss >> d_y;
-  	map_waypoints_x.push_back(x);
-  	map_waypoints_y.push_back(y);
-  	map_waypoints_s.push_back(s);
-  	map_waypoints_dx.push_back(d_x);
-  	map_waypoints_dy.push_back(d_y);
-  }
+					vector<Vehicle> previous_path;
+					for( int ii = 0; ii<prev_size; ii++){
+						previous_path.push_back( Vehicle(previous_path_x[ii], previous_path_y[ii]) );
+					}
 
+					// Previous path's end s and d values
+					Vehicle end_path = Vehicle(0.0, 0.0, json_msg[1]["end_path_s"], json_msg[1]["end_path_d"]);
 
-  // Have a reference velocity to target
-  double ref_vel = 0.0; // mph
-  // Start in lane 1
-  int lane = 1;
-  // Point tal = Point(1,2,3,4,5,6);
+					// Sensor Fusion Data, a list of all other cars on the same side of the road.
+					auto sensor_fusion = json_msg[1]["sensor_fusion"];
 
+					// Get sensor fusion data
+					vector<SensorFusionPoint> sensor_fusion_points;
+					for(int ii = 0; ii < sensor_fusion.size(); ii++){
+						SensorFusionPoint new_point;
+						new_point.x = sensor_fusion[ii][1];
+						new_point.y = sensor_fusion[ii][2];
+						new_point.vx = sensor_fusion[ii][3];
+						new_point.vy = sensor_fusion[ii][4];
+						new_point.s = sensor_fusion[ii][5];
+						new_point.d = sensor_fusion[ii][6];
 
-  h.onMessage([&ref_vel, &lane, &map_waypoints_x, &map_waypoints_y, &map_waypoints_s, &map_waypoints_dx, &map_waypoints_dy](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
-                     uWS::OpCode opCode) {
-    // "42" at the start of the message means there's a websocket message event.
-    // The 4 signifies a websocket message
-    // The 2 signifies a websocket event
-    //auto sdata = string(data).substr(0, length);
-    //cout << sdata << endl;
-    if (length && length > 2 && data[0] == '4' && data[1] == '2') {
+						float speed_m_per_s = sqrt( new_point.vx*new_point.vx + new_point.vy*new_point.vy );
+						new_point.speed = M_PER_S_TO_MPH * speed_m_per_s;
 
-      auto s = hasData(data);
+						sensor_fusion_points.push_back(new_point);
+					}
 
-      if (s != "") {
-        auto json_msg = json::parse(s);
-        
-        string event = json_msg[0].get<string>();
-        
-        if (event == "telemetry") {
-          // json_msg[1] is the data JSON object
-          
-        	// Main car's localization Data
-            Point car = Point(json_msg[1]["x"], json_msg[1]["y"], json_msg[1]["s"], json_msg[1]["d"], json_msg[1]["yaw"], json_msg[1]["speed"]);
+					vector<Vehicle> next_vals = behavior_planner.plan_next_position(car,
+																					previous_path,
+																					end_path,
+																					sensor_fusion_points);
+					json msgJson;
+					msgJson["next_x"] = Vehicle::get_vector_x_from_list(next_vals);
+					msgJson["next_y"] = Vehicle::get_vector_y_from_list(next_vals);
 
-          	// Previous path data given to the Planner
-          	auto previous_path_x = json_msg[1]["previous_path_x"];
-          	auto previous_path_y = json_msg[1]["previous_path_y"];
+					auto msg = "42[\"control\","+ msgJson.dump()+"]";
 
-            int prev_size = previous_path_x.size();
+					//this_thread::sleep_for(chrono::milliseconds(1000));
+					ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
+				}
+			}
+			else {
+				// Manual driving
+				std::string msg = "42[\"manual\",{}]";
+				ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
+			}
 
-            vector<Point> previous_path;
-            for( int ii = 0; ii<prev_size; ii++){
-              previous_path.push_back( Point(previous_path_x[ii], previous_path_y[ii]) );
-            }
-
-
-
-          	// Previous path's end s and d values 
-            Point end_path = Point(0.0, 0.0, json_msg[1]["end_path_s"], json_msg[1]["end_path_d"]);
-
-          	// Sensor Fusion Data, a list of all other cars on the same side of the road.
-          	auto sensor_fusion = json_msg[1]["sensor_fusion"];
-
-            
-            if(prev_size > 0){
-              car.s = end_path.s;
-            }
-
-            bool too_close = false;
-
-            // Find ref_v to use
-            for(int ii = 0; ii < sensor_fusion.size(); ii++){
-              // Car is in my lane
-              float d = sensor_fusion[ii][6];
-              if(d < (2 + 4.0*lane + 2) && d > (2 + 4*lane - 2)){
-                double vx = sensor_fusion[ii][3];
-                double vy = sensor_fusion[ii][4];
-                double check_speed = sqrt( vx*vx + vy*vy );
-                double check_car_s = sensor_fusion[ii][5];
-
-                // If using previous points can project s value out 
-                check_car_s += ((double)prev_size*0.02*check_speed);
-                // Check s values greater than mine and s gap
-                if((check_car_s > car.s) && ((check_car_s - car.s) < 30)){
-                  
-                  too_close = true;
-                  if(lane > 0){
-                    lane = 0;
-                  }
-
-                }
-              }
-            }
-
-            if(too_close){
-              ref_vel -= 0.224;
-            }
-            else if(ref_vel < 49.5){
-              ref_vel += 0.224;
-            }
-
-          	// TODO: define a path made up of (x,y) points that the car will visit sequentially every .02 seconds
-            // Create very spaced (30m) waypoints, then interpolate with spline.
-            vector<Point> pts;
-
-
-            Point ref = Point();
-            ref.x = car.x;
-            ref.y = car.y;
-            ref.yaw_deg = car.yaw_deg;
-            ref.yaw_rad = car.yaw_rad;
-            ref.print();
-
-
-            if(prev_size < 2){
-              // Use 2 points that make the path tangent to the car.
-              Point prev_car = Point();
-              prev_car.x = car.x - cos(car.yaw_rad);
-              prev_car.y = car.y - sin(car.yaw_rad);              
-
-              pts.push_back(prev_car);
-              pts.push_back(car);              
-
-            }
-            // use the previous path's end point as starting reference
-            else{
-              // Redefine
-              ref.x = previous_path_x[prev_size-1];
-              ref.y = previous_path_y[prev_size-1];
-
-              Point ref_prev = Point();
-              ref_prev.x = previous_path_x[prev_size-2];
-              ref_prev.y = previous_path_y[prev_size-2];
-              ref.yaw_rad = atan2(ref.y - ref_prev.y, ref.x - ref_prev.x );
-
-              // Use 2 points that make the path tangent to the previous path's end point
-              pts.push_back(ref_prev);
-              pts.push_back(ref);              
-
-            }
-
-            Point next_wp0 = Point( getXY(car.s + 30,
-                                          (2+4*lane),
-                                          map_waypoints_s,
-                                          map_waypoints_x,
-                                          map_waypoints_y) ); 
-            Point next_wp1 = Point( getXY(car.s + 60,
-                                          (2+4*lane),
-                                          map_waypoints_s,
-                                          map_waypoints_x,
-                                          map_waypoints_y) );
-            Point next_wp2 = Point( getXY(car.s + 90,
-                                          (2+4*lane),
-                                          map_waypoints_s,
-                                          map_waypoints_x,
-                                          map_waypoints_y) );
-
-            pts.push_back(next_wp0);            
-            pts.push_back(next_wp1);
-            pts.push_back(next_wp2);
-
-
-            for(int ii = 0; ii < pts.size(); ii++){
-              Point shift = Point();
-              shift = pts[ii] - ref;
-              pts[ii] = shift.rotate_by_angle(-ref.yaw_rad);
-            }
-
-            // Create a spline
-            tk:: spline my_spline;
-
-            // Set (x,y) points to the spline
-            my_spline.set_points( Point::get_vector_x_from_list(pts), 
-                                  Point::get_vector_y_from_list(pts));
-
-            // Define the actual (x,y) points we will use for the planner
-            vector<Point> next_vals;
-            
-            // Start with all of the previous path points from last time
-            for (int ii = 0; ii < previous_path_x.size(); ii++){
-              Point new_point = Point(previous_path_x[ii], previous_path_y[ii]);
-              next_vals.push_back(new_point);
-            }
-
-            // Calculate hot to break up spline points so that we travel at our desired reference velocity
-            Point target = Point();
-            target.x = 30.0;
-            target.y = my_spline(target.x);
-
-            double x_add_on = 0;
-
-            // Fill up the rest of our path planner after filling it with previous points, here we will always output 50 points
-            for( int ii = 1; ii <= 50-previous_path_x.size(); ii++ ){
-              double N = (target.module()/(0.02*ref_vel/2.24)); // div by 2.24 for MPH
-
-              Point point = Point();
-              point.x = x_add_on + (target.x)/N;
-              point.y = my_spline(point.x);
-
-              x_add_on = point.x;
-
-              // Rotates back to normal after rotating it earlier
-              point = point.rotate_by_angle(ref.yaw_rad);
-              point = point + ref;
-
-              next_vals.push_back(point);
-
-            }
-
-            json msgJson;
-
-          	msgJson["next_x"] = Point::get_vector_x_from_list(next_vals);
-          	msgJson["next_y"] = Point::get_vector_y_from_list(next_vals);
-
-          	auto msg = "42[\"control\","+ msgJson.dump()+"]";
-
-          	//this_thread::sleep_for(chrono::milliseconds(1000));
-          	ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
-          
-        }
-      } else {
-        // Manual driving
-        std::string msg = "42[\"manual\",{}]";
-        ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
-      }
-
-      //usleep(100000);
-    }
-  });
+		//usleep(100000);
+		}
+	});
 
   // We don't need this since we're not using HTTP but if it's removed the
   // program

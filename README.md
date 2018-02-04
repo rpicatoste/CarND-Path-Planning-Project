@@ -7,7 +7,7 @@ Self-Driving Car Engineer Nanodegree Program
 ### To run:
 Open the Bash no Ubuntu on Windows.
 Go to the folder: 
-/mnt/d/Ricardo/Google Drive/Study/Self Driving Car Nanodegree/Term 3/CarND-Path-Planning-Project/build
+cd "/mnt/d/Ricardo/Google Drive/Study/Self Driving Car Nanodegree/Term 3/CarND-Path-Planning-Project/build"
 
 To compile the project:
 cmake .. && make 
