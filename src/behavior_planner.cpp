@@ -17,7 +17,7 @@ std::vector<Vehicle> BehaviorPlanner::plan_next_position(	Vehicle &car,
 															Vehicle end_path,
 															std::vector<SensorFusionPoint> other_cars_raw)
 {
-	printf("\n--------- Entering planner. Lane: (reference: %d real: %d). s: % 4.0f m. d: 3.1f. Speed: % 3.0f m/s. Number of vehicles: %d ---------\n\n",
+	printf("\n----- Entering planner. Lane: (reference: %d real: %d). s: % 4.0f m. d: 3.1f. Speed: % 3.0f m/s. Number of vehicles: %d -----\n\n",
 			car.reference_lane, car.get_current_lane(), car.s, car.d, car.velocity, other_cars_raw.size());
 
     int prev_size = previous_path.size();
@@ -25,10 +25,7 @@ std::vector<Vehicle> BehaviorPlanner::plan_next_position(	Vehicle &car,
     	car.s = end_path.s;
     }
 
-    // ********************************************************************************************************************
-    // Porting the FSM
-
-    // Convert the SensorFusionPoints to a Vechile list.
+     // Convert the SensorFusionPoints to a Vehicle list.
     std::vector<Vehicle> other_cars;
     for(int ii = 0; ii < other_cars_raw.size() ; ++ii){
     	other_cars.push_back(Vehicle(other_cars_raw[ii], *this));
@@ -54,52 +51,6 @@ std::vector<Vehicle> BehaviorPlanner::plan_next_position(	Vehicle &car,
     // Choose next state
 	std::vector<Vehicle> trajectory = car.choose_next_state(all_predictions);
     car.realize_next_state(trajectory);
-
-	// 1. successor_states()
-    //vector<string> possible_succesor_states = successor_states();
-
-// JUST DECIDE LANE AND REF_VEL. THEY WILL DEPEND ON STATE, AND StATE ON THEM...
-
-    // ********************************************************************************************************************
- /*   bool too_close = false, car_in_my_lane = false;
-
-    // Find ref_v to use
-    for(int ii = 0; ii < other_cars.size(); ii++){
-
-    	// Car is in my car.lane
-    	car_in_my_lane = other_cars[ii].d < (car.get_desired_s() + 2) && other_cars[ii].d > (car.get_desired_s() - 2);
-
-    	if(car_in_my_lane){
-	        // If using previous points can project s value out 
-    		other_cars[ii].s += ((double)prev_size*0.02*other_cars[ii].speed);
-	        // Check s values greater than mine and s gap
-	        if((other_cars[ii].s > car.s) && ((other_cars[ii].s - car.s) < 30)){
-	          
-	        	too_close = true;
-	        	if(car.reference_lane > 0){
-	            	car.reference_lane = 0;
-	        	}
-        	}
-    	}
-    }
-
-    if(too_close){
-    	car.velocity -= 0.224;
-    }
-    else if(car.velocity < SPEED_LIMIT_MPH-0.5){
-    	car.velocity += max_delta_v;
-    }
-
-    printf("(After ) Car desired lane: %d, desired speed: %f\n", car.reference_lane, car.velocity);
-*/
-    // TODO if we don't give an initial speed, this crashed in the spline generation.
- /*   float max_delta_v = MAX_ACCELERATION_MILES_S2*SAMPLING_TIME;
-    if(car.velocity < SPEED_LIMIT_MPH){
-    //if(car.s < 130.0){
-    	car.velocity += max_delta_v;
-    }
-    printf("Car s: %f\n", car.s);*/
-    // ********************************************************************************************************************
 
   	// Define a path made up of (x,y) points that the car will visit sequentially every .02 seconds
     // Create very spaced waypoints, then interpolate with spline.

@@ -710,13 +710,11 @@ void Vehicle::realize_next_state(std::vector<Vehicle> trajectory)
     Sets state and kinematics for ego vehicle using the last state of the trajectory.
     */
     Vehicle next_state = trajectory[1];
-    // TODO reconnect state and lane
     this->state = next_state.state;
     this->reference_lane = next_state.reference_lane;
     this->velocity = next_state.velocity;
     this->a = next_state.a;
 
-    //this->s = next_state.s;
 }
 
 void Vehicle::configure(std::vector<int> road_data)
