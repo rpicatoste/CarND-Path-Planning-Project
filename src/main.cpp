@@ -250,35 +250,37 @@ int main()
 					// Get sensor fusion data
 					vector<SensorFusionPoint> sensor_fusion_points;
 					for(int ii = 0; ii < sensor_fusion.size(); ii++){
-					SensorFusionPoint new_point;
-					new_point.d = sensor_fusion[ii][6];
-					new_point.vx = sensor_fusion[ii][3];
-					new_point.vy = sensor_fusion[ii][4];
-					new_point.speed = sqrt( new_point.vx*new_point.vx + new_point.vy*new_point.vy );
-					new_point.s = sensor_fusion[ii][5];
+						SensorFusionPoint new_point;
+						new_point.x = sensor_fusion[ii][1];
+						new_point.y = sensor_fusion[ii][2];
+						new_point.vx = sensor_fusion[ii][3];
+						new_point.vy = sensor_fusion[ii][4];
+						new_point.s = sensor_fusion[ii][5];
+						new_point.d = sensor_fusion[ii][6];
+						new_point.speed = sqrt( new_point.vx*new_point.vx + new_point.vy*new_point.vy );
 
-					sensor_fusion_points.push_back(new_point);
+						sensor_fusion_points.push_back(new_point);
+					}
+
+					vector<Vehicle> next_vals = behavior_planner.plan_next_position(car,
+																					previous_path,
+																					end_path,
+																					sensor_fusion_points);
+					json msgJson;
+					msgJson["next_x"] = Vehicle::get_vector_x_from_list(next_vals);
+					msgJson["next_y"] = Vehicle::get_vector_y_from_list(next_vals);
+
+					auto msg = "42[\"control\","+ msgJson.dump()+"]";
+
+					//this_thread::sleep_for(chrono::milliseconds(1000));
+					ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
 				}
-
-				vector<Vehicle> next_vals = behavior_planner.plan_next_position(car,
-																				previous_path,
-																				end_path,
-																				sensor_fusion_points);
-				json msgJson;
-				msgJson["next_x"] = Vehicle::get_vector_x_from_list(next_vals);
-				msgJson["next_y"] = Vehicle::get_vector_y_from_list(next_vals);
-
-				auto msg = "42[\"control\","+ msgJson.dump()+"]";
-
-				//this_thread::sleep_for(chrono::milliseconds(1000));
+			}
+			else {
+				// Manual driving
+				std::string msg = "42[\"manual\",{}]";
 				ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
 			}
-		}
-		else {
-			// Manual driving
-			std::string msg = "42[\"manual\",{}]";
-			ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
-		}
 
 		//usleep(100000);
 		}

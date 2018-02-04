@@ -64,10 +64,8 @@ Vehicle::Vehicle(double x, double y, double s, double d, double yaw_deg, double 
 
 Vehicle::Vehicle(SensorFusionPoint other_vehicle, BehaviorPlanner &bp)
 {
-    auto xy = bp.getXY(other_vehicle.s,
-						other_vehicle.d);
-    this->x = xy[0];
-    this->y = xy[1];
+    this->x = other_vehicle.x;
+    this->y = other_vehicle.y;
 	this->s  = other_vehicle.s;
 	this->d  = other_vehicle.d;
 	this->yaw_deg = 0.0;
@@ -160,18 +158,15 @@ std::string Vehicle::relative_position_to_string(const Vehicle& my_car)
 {
     char aux[10] = "";
 	std::string txt = "(";
-	const char* format = "%5.0f";
+	const char* format = "%6.1f";
 
     sprintf(aux, format, this->s - my_car.s);
     txt += std::string(", s: ") + std::string(aux);
 
-    sprintf(aux, format, this->d - my_car.d);
-    txt += std::string(", d: ") + std::string(aux);
+    txt += std::string(", lane: ") + std::to_string(this->get_current_lane());
 
     sprintf(aux, format, this->velocity);
     txt += std::string(", v: ") + std::string(aux);
-
-    txt += std::string(", lane: ") + std::to_string(this->get_current_lane());
 
 	txt += std::string(")");
 
