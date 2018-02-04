@@ -38,7 +38,11 @@
 #define SAMPLING_TIME_2 (0.0004)
 
 #define M_PER_S_TO_MPH (2.24)
+#define MPH_TO_M_PER_S (0.446)
 
 #define CAR_LENGTH (5.0)
+#define SAFETY_DISTANCE ()
+
+#define DISTANTE_TO_START_GOING_TO_GOAL_LANE (200.0)
 
 #endif /* SRC_MAIN_CONSTANTS_H_ */

@@ -17,8 +17,8 @@ std::vector<Vehicle> BehaviorPlanner::plan_next_position(	Vehicle &car,
 															Vehicle end_path,
 															std::vector<SensorFusionPoint> other_cars_raw)
 {
-	printf("\n----------- Entering planner. Current reference lane: %d. Speed: % 3.0f Number of vehicles: %d -----------\n\n",
-			car.reference_lane, car.velocity, other_cars_raw.size());
+	printf("\n--------- Entering planner. Lane: (reference: %d real: %d). s: % 4.0f m. d: 3.1f. Speed: % 3.0f m/s. Number of vehicles: %d ---------\n\n",
+			car.reference_lane, car.get_current_lane(), car.s, car.d, car.velocity, other_cars_raw.size());
 
     int prev_size = previous_path.size();
     if(prev_size > 0){
@@ -43,10 +43,12 @@ std::vector<Vehicle> BehaviorPlanner::plan_next_position(	Vehicle &car,
 
         // Print
         std::string pred_text = "";
-        for(int jj = 0; jj<all_predictions[ii].size(); jj++){
-        	pred_text += "(" + all_predictions[ii][jj].relative_position_to_string(car) + ")";
+        for(int jj = 0; jj<all_predictions[ii].size(); ++jj){
+        	pred_text += "| Pred " + std::to_string(jj) + " " + all_predictions[ii][jj].relative_position_to_string(car) + ")";
         }
-        printf("  Car %02d. Preds: %s\n", ii, pred_text.c_str() );
+
+        // Do not delete this print. Useful understanding the other cars and their predictions.
+        //printf("  Car %02d. Preds: %s\n", ii, pred_text.c_str() );
     }
 
     // Choose next state
@@ -158,7 +160,8 @@ std::vector<Vehicle> BehaviorPlanner::plan_next_position(	Vehicle &car,
 		shift = next_waypoints_raw[ii] - reference_point;
 		next_waypoints_raw[ii] = shift.rotate_by_angle(-reference_point.yaw_rad);
 
-		next_waypoints_raw[ii].print("New waypoints relative: ");
+		// Do not delete, instersting when working on the points passed to the simulation.
+		//next_waypoints_raw[ii].print("New waypoints relative: ");
     }
 
     std::vector<Vehicle> next_waypoints_for_the_simulator;

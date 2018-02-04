@@ -29,8 +29,8 @@ float goal_lane_cost(	const Vehicle & vehicle,
 
 	float lane_distance = abs(	intended_lane+final_lane - 2*vehicle.goal_lane);
 
-	// From 50 meters (the numerator) there will be a surge of imporante to be in the proper lane (or we will miss it).
-	float weight_by_distance = 50.0 / abs(distance);
+	// From the DISTANTE_TO_START_GOING_TO_GOAL_LANE there will be a surge of importance to be in the proper lane.
+	float weight_by_distance = DISTANTE_TO_START_GOING_TO_GOAL_LANE / abs(distance);
 	lane_distance *= weight_by_distance;
 
 	cost = lane_distance;
@@ -48,12 +48,12 @@ float goal_distance_cost(	const Vehicle & vehicle,
     float cost;
 
 	float s_distance = abs(	vehicle.s - vehicle.goal_s);
-	// Saturate s_distance. Above 100 meters it will not have increasing effect.
-	float s_max_value = 100.0;
+	// Saturate s_distance. Above a certain distance it will not have increasing effect.
+	float s_max_value = DISTANTE_TO_START_GOING_TO_GOAL_LANE;
 	s_distance = (s_distance > s_max_value) ? s_max_value : s_distance;
 
 	// Normalize
-	cost = s_distance/100.0;
+	cost = s_distance/DISTANTE_TO_START_GOING_TO_GOAL_LANE;
 
     return cost ;
 }
@@ -68,61 +68,53 @@ float inefficiency_cost(const Vehicle & vehicle,
 {
     float distance      = abs(data["distance_to_goal"]);
 
-    float proposed_speed_intended = lane_speed(predictions, data["intended_lane"]);
-    if (proposed_speed_intended < 0) {
-        proposed_speed_intended = vehicle.target_speed;
-    }
+    std::vector<float> lane_kinematics;
 
-    float proposed_speed_final = lane_speed(predictions, data["final_lane"]);
-    if (proposed_speed_final < 0) {
-        proposed_speed_final = vehicle.target_speed;
-    }
+    lane_kinematics = vehicle.get_lane_kinematics(predictions, data["intended_lane"]);
+    float proposed_speed_intended = lane_kinematics[1];
 
-    float cost = (2.0*vehicle.target_speed - proposed_speed_intended - proposed_speed_final)/vehicle.target_speed;
+    lane_kinematics = vehicle.get_lane_kinematics(predictions, data["final_lane"]);
+    float proposed_speed_final = lane_kinematics[1];
 
-    // The further we are, the more important it is to go faster. At 200 meters the speed starts to matter less.
-    cost *= (distance/200.0);
+    float mean_speed = (proposed_speed_intended + proposed_speed_final) / 2.0;
+
+    float cost = (vehicle.target_speed - mean_speed)/vehicle.target_speed;
+
+    // The further we are, the more important it is to go faster. Then the importance decreases.
+    cost *= (distance/DISTANTE_TO_START_GOING_TO_GOAL_LANE);
+
+    printf("Cost % 6.0f intended lane speed: % 3.0f, final lane speed: % 3.0f\n", cost, proposed_speed_intended, proposed_speed_final);
+    //cost = SATURATE(cost, ));
 
     return cost;
 }
 
-float lane_speed(const std::map<int, std::vector<Vehicle>> & predictions, int lane)
-{
-    /*
-    All non ego vehicles in a lane have the same speed, so to get the speed limit for a lane,
-    we can just find one vehicle in that lane.
-    */
-	std::map<int, std::vector<Vehicle>>::const_iterator it;
-    for (it = predictions.begin(); it != predictions.end(); ++it) {
-        int key = it->first;
-        Vehicle vehicle = it->second[0];
-        if (vehicle.reference_lane == lane && key != -1) {
-            return vehicle.velocity;
-        }
-    }
-    //Found no vehicle in the lane
-    return -1.0;
-}
 
 /*
 Sum weighted cost functions to get total cost for trajectory.
 */
-std::tuple<float, float, float, float> calculate_cost(	const Vehicle & vehicle,
-														const std::map<int, std::vector<Vehicle>> & predictions,
-														const std::vector<Vehicle> & trajectory)
+std::tuple<float, float, float, float, float> calculate_cost(
+		const Vehicle & vehicle,
+		const std::map<int, std::vector<Vehicle>> & predictions,
+		const std::vector<Vehicle> & trajectory)
 {
     std::map<std::string, float> trajectory_data = get_helper_data(vehicle, trajectory, predictions);
     float cost = 0.0;
 
-    float new_goal_distance_cost, new_inefficiency_cost, new_goal_lane_cost;
+    float new_goal_distance_cost, new_inefficiency_cost, new_goal_lane_cost, change_lane_penalization;
 
 	new_goal_distance_cost = weight_distance_goal   * goal_distance_cost(vehicle, trajectory, predictions, trajectory_data);
 	new_goal_lane_cost     = weight_lane_goal   * goal_lane_cost(vehicle, trajectory, predictions, trajectory_data);
 	new_inefficiency_cost  = weight_efficiency * inefficiency_cost(vehicle, trajectory, predictions, trajectory_data);
 
-    cost = new_inefficiency_cost + new_goal_distance_cost + new_goal_lane_cost;
+	change_lane_penalization = (trajectory[1].state.compare("KL")==0) ? 0.0 : 200.0;
+	printf("Penalization trajectory[0].state is %s: %.0f\n", trajectory[0].state.c_str(), change_lane_penalization);
+	printf("Penalization trajectory[1].state is %s: %.0f\n", trajectory[0].state.c_str(), change_lane_penalization);
+	printf("Penalization trajectory[2].state is %s: %.0f\n", trajectory[0].state.c_str(), change_lane_penalization);
 
-    return std::make_tuple(cost, new_inefficiency_cost, new_goal_distance_cost, new_goal_lane_cost);
+    cost = new_inefficiency_cost + new_goal_distance_cost + new_goal_lane_cost + change_lane_penalization;
+
+    return std::make_tuple(cost, new_inefficiency_cost, new_goal_distance_cost, new_goal_lane_cost, change_lane_penalization);
 }
 
 /*
@@ -156,6 +148,7 @@ void print_costs(	std::vector <float> &costs,
 					std::vector <float> &goal_distance_costs,
 					std::vector <float> &lane_distance_costs,
 					std::vector <float> &inefficiency_costs,
+					std::vector <float> &penalizations,
 					int best_idx,
 					std::vector<std::string> states)
 {
@@ -165,10 +158,12 @@ void print_costs(	std::vector <float> &costs,
 	std::string txt_goal_distance_costs = "Goal dist cost  (";
 	std::string txt_lane_distance_costs = "Lane dist cost  (";
 	std::string txt_inefficiency_costs 	= "Inefficienc cost(";
+	std::string txt_penalization     	= "Change Penalty  (";
 	char aux_cost[20] = "";
 	char aux_goal_distance_cost[20] = "";
 	char aux_lane_distance_cost[20] = "";
 	char aux_inefficiency_cost[20] = "";
+	char aux_penalization[20] = "";
 	char aux_state[20] = "";
 	for(int ii = 0; ii < costs.size(); ii++ ){
 
@@ -177,6 +172,7 @@ void print_costs(	std::vector <float> &costs,
 			sprintf(aux_goal_distance_cost,  "(% 12.1f)", goal_distance_costs[ii]);
 			sprintf(aux_lane_distance_cost,  "(% 12.1f)", lane_distance_costs[ii]);
 			sprintf(aux_inefficiency_cost,  "(% 12.1f)", inefficiency_costs[ii]);
+			sprintf(aux_penalization,  "(% 12.1f)", penalizations[ii]);
 			sprintf(aux_state, "(% 12s)", states[ii].c_str());
 		}
 		else{
@@ -184,6 +180,7 @@ void print_costs(	std::vector <float> &costs,
 			sprintf(aux_goal_distance_cost,  " % 12.1f ", goal_distance_costs[ii]);
 			sprintf(aux_lane_distance_cost,  " % 12.1f ", lane_distance_costs[ii]);
 			sprintf(aux_inefficiency_cost,  " % 12.1f ", inefficiency_costs[ii]);
+			sprintf(aux_penalization,  " % 12.1f ", penalizations[ii]);
 			sprintf(aux_state, " % 12s ", states[ii].c_str());
 		}
 
@@ -191,6 +188,7 @@ void print_costs(	std::vector <float> &costs,
 		txt_goal_distance_costs  += std::string(aux_goal_distance_cost);
 		txt_lane_distance_costs  += std::string(aux_lane_distance_cost);
 		txt_inefficiency_costs   += std::string(aux_inefficiency_cost);
+		txt_penalization         += std::string(aux_penalization);
 		txt_states += std::string(aux_state);
 //		std::cout << txt_states[ii] << std::endl;
 	}
@@ -198,12 +196,14 @@ void print_costs(	std::vector <float> &costs,
 	txt_goal_distance_costs += ")";
 	txt_lane_distance_costs += ")";
 	txt_inefficiency_costs += ")";
+	txt_penalization += ")";
 	txt_states += ")";
 	std::cout << txt_states << std::endl;
 	std::cout << txt_costs << std::endl;
 	std::cout << txt_goal_distance_costs << std::endl;
 	std::cout << txt_lane_distance_costs << std::endl;
 	std::cout << txt_inefficiency_costs << std::endl;
+	std::cout << txt_penalization << std::endl;
 }
 
 

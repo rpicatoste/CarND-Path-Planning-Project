@@ -49,9 +49,16 @@ public:
 	std::vector<Vehicle> constant_speed_trajectory();
 	float position_at(float t);
 	std::vector<Vehicle> keep_lane_trajectory(std::map<int, std::vector<Vehicle>> predictions);
-	bool get_vehicle_ahead(std::map<int, std::vector<Vehicle>> predictions, int lane, Vehicle & rVehicle);
+
+	bool get_vehicle_ahead(
+			std::map<int, std::vector<Vehicle>> predictions,
+			int lane,
+			Vehicle & rVehicle) const;
+
 	bool get_vehicle_behind(std::map<int, std::vector<Vehicle>> predictions, int lane, Vehicle & rVehicle);
-	std::vector<float> get_lane_kinematics(std::map<int, std::vector<Vehicle>> predictions, int lane);
+	std::vector<float> get_lane_kinematics(
+			std::map<int, std::vector<Vehicle>> predictions,
+			int lane) const;
 	std::vector<Vehicle> lane_change_trajectory(std::string state, std::map<int, std::vector<Vehicle>> predictions);
 	std::vector<Vehicle> prep_lane_change_trajectory(std::string state, std::map<int, std::vector<Vehicle>> predictions);
 	void increment(int dt);
