@@ -25,7 +25,7 @@ public:
 	double velocity;
 	double a;
 
-	int desired_lane;
+	int reference_lane;
 	int preferred_buffer = 6; // impacts "keep lane" behavior.
 
 	// Porting

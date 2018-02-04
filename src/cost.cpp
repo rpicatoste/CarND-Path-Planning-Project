@@ -96,7 +96,7 @@ float lane_speed(const std::map<int, std::vector<Vehicle>> & predictions, int la
     for (it = predictions.begin(); it != predictions.end(); ++it) {
         int key = it->first;
         Vehicle vehicle = it->second[0];
-        if (vehicle.desired_lane == lane && key != -1) {
+        if (vehicle.reference_lane == lane && key != -1) {
             return vehicle.velocity;
         }
     }
@@ -142,10 +142,10 @@ std::map<std::string, float> get_helper_data(	const Vehicle & vehicle,
     Vehicle trajectory_last = trajectory[1];
     int intended_lane;
 
-    intended_lane = trajectory_last.desired_lane + trajectory_last.lane_direction[trajectory_last.state];
+    intended_lane = trajectory_last.reference_lane + trajectory_last.lane_direction[trajectory_last.state];
 
     float distance_to_goal = vehicle.goal_s - trajectory_last.s;
-    float final_lane = trajectory_last.desired_lane;
+    float final_lane = trajectory_last.reference_lane;
     trajectory_data["intended_lane"] = (float)intended_lane;
     trajectory_data["final_lane"] = final_lane;
     trajectory_data["distance_to_goal"] = distance_to_goal;

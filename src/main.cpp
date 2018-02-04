@@ -196,7 +196,7 @@ int main() {
   // Start in lane 1
   int lane = START_LANE;
   Vehicle car = Vehicle();
-  car.desired_lane = lane;
+  car.reference_lane = lane;
 
 	vector<int> car_config = {	SPEED_LIMIT_MPH,
 								NUM_LANES,

@@ -20,7 +20,7 @@
 #define	GOAL_LANE (0)
 // In m/s^2 the max is 10
 #define MAX_ACCELERATION_METER_S2 (10)
-#define MAX_ACCELERATION_MILE_S2 (22.3694)
+#define MAX_ACCELERATION_MILES_S2 (22.3694)
 
 
 #define START_LANE (1)

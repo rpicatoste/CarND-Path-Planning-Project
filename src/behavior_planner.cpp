@@ -14,13 +14,13 @@ constexpr double pi() { return M_PI; }
 std::vector<Vehicle> BehaviorPlanner::plan_next_position(	Vehicle &car, 
 															std::vector<Vehicle> previous_path,
 															Vehicle end_path,
-															std::vector<SensorFusionPoint> vehicles,
+															std::vector<SensorFusionPoint> other_cars,
 															//std::map<int, std::vector<SensorFusionPoint>> vehicles,
 															std::vector<double> map_waypoints_x,
 															std::vector<double> map_waypoints_y,
 															std::vector<double> map_waypoints_s)
 {
-	printf("Entering planner. Number of vehicles: %d\n",  vehicles.size());
+	printf("Entering planner. Number of vehicles: %d\n",  other_cars.size());
 
     int prev_size = previous_path.size();
     if(prev_size > 0){
@@ -36,9 +36,9 @@ std::vector<Vehicle> BehaviorPlanner::plan_next_position(	Vehicle &car,
     int vehicle_counter = 0;
 
 
-    p_vehicle = vehicles.begin();
+    p_vehicle = other_cars.begin();
     vehicle_counter = 0;
-    while(p_vehicle != vehicles.end())
+    while(p_vehicle != other_cars.end())
     {
 		int vehicle_id;
 		std::vector<SensorFusionPoint> predictions_for_current_vehicle_raw;
@@ -54,6 +54,7 @@ std::vector<Vehicle> BehaviorPlanner::plan_next_position(	Vehicle &car,
         p_vehicle++;
         vehicle_counter++;
 
+        // Print
         std::string pred_text = "";
         for(int jj = 0; jj<predictions_for_current_vehicle.size(); jj++){
         	pred_text += "(" + predictions_for_current_vehicle[jj].relative_position_to_string(car) + ")";
@@ -64,38 +65,38 @@ std::vector<Vehicle> BehaviorPlanner::plan_next_position(	Vehicle &car,
     // Choose next state
 	//vector<Vehicle> trajectory = it->second.choose_next_state(predictions);
     std::vector<Vehicle> trajectory = car.choose_next_state(all_predictions);
-   // car.realize_next_state(trajectory);
+    car.realize_next_state(trajectory);
 
 	// 1. successor_states()
     //vector<string> possible_succesor_states = successor_states();
 
-    printf("(Before) Car desired lane: %d, desired speed: %f\n", car.desired_lane, car.velocity);
+    printf("(Before) Car desired lane: %d, desired speed: %f\n", car.reference_lane, car.velocity);
 // JUST DECIDE LANE AND REF_VEL. THEY WILL DEPEND ON STATE, AND StATE ON THEM...
 
     // ********************************************************************************************************************
-    bool too_close = false, car_in_my_lane = false;
+ /*   bool too_close = false, car_in_my_lane = false;
 
     // Find ref_v to use
-    for(int ii = 0; ii < vehicles.size(); ii++){
+    for(int ii = 0; ii < other_cars.size(); ii++){
 
     	// Car is in my car.lane
-    	car_in_my_lane = vehicles[ii].d < (car.get_desired_s() + 2) && vehicles[ii].d > (car.get_desired_s() - 2);
+    	car_in_my_lane = other_cars[ii].d < (car.get_desired_s() + 2) && other_cars[ii].d > (car.get_desired_s() - 2);
 
     	if(car_in_my_lane){
 	        // If using previous points can project s value out 
-    		vehicles[ii].s += ((double)prev_size*0.02*vehicles[ii].speed);
+    		other_cars[ii].s += ((double)prev_size*0.02*other_cars[ii].speed);
 	        // Check s values greater than mine and s gap
-	        if((vehicles[ii].s > car.s) && ((vehicles[ii].s - car.s) < 30)){
+	        if((other_cars[ii].s > car.s) && ((other_cars[ii].s - car.s) < 30)){
 	          
-	        	too_close = true;/*
-	        	if(car.desired_lane > 0){
-	            	car.desired_lane = 0;
-	        	}*/
+	        	too_close = true;
+	        	if(car.reference_lane > 0){
+	            	car.reference_lane = 0;
+	        	}
         	}
     	}
     }
 
-    float max_delta_v = MAX_ACCELERATION_MILE_S2*SAMPLING_TIME;
+    float max_delta_v = MAX_ACCELERATION_MILES_S2*SAMPLING_TIME;
     if(too_close){
     	car.velocity -= 0.224;
     }
@@ -103,8 +104,9 @@ std::vector<Vehicle> BehaviorPlanner::plan_next_position(	Vehicle &car,
     	car.velocity += max_delta_v;
     }
 
-    printf("(After ) Car desired lane: %d, desired speed: %f\n", car.desired_lane, car.velocity);
-
+    printf("(After ) Car desired lane: %d, desired speed: %f\n", car.reference_lane, car.velocity);
+*/
+    car.velocity += 0.224;
     // ********************************************************************************************************************
 
 
@@ -149,19 +151,18 @@ std::vector<Vehicle> BehaviorPlanner::plan_next_position(	Vehicle &car,
 		pts.push_back(ref);              
 
     }
-
     Vehicle next_wp0 = Vehicle( getXY(car.s + 30,
-                                  (2+4*car.desired_lane),
+                                  (2+4*car.reference_lane),
                                   map_waypoints_s,
                                   map_waypoints_x,
                                   map_waypoints_y) ); 
     Vehicle next_wp1 = Vehicle( getXY(car.s + 60,
-                                  (2+4*car.desired_lane),
+                                  (2+4*car.reference_lane),
                                   map_waypoints_s,
                                   map_waypoints_x,
                                   map_waypoints_y) );
     Vehicle next_wp2 = Vehicle( getXY(car.s + 90,
-                                  (2+4*car.desired_lane),
+                                  (2+4*car.reference_lane),
                                   map_waypoints_s,
                                   map_waypoints_x,
                                   map_waypoints_y) );
@@ -169,7 +170,6 @@ std::vector<Vehicle> BehaviorPlanner::plan_next_position(	Vehicle &car,
     pts.push_back(next_wp0);            
     pts.push_back(next_wp1);
     pts.push_back(next_wp2);
-
 
     for(int ii = 0; ii < pts.size(); ii++){
 		Vehicle shift = Vehicle();
@@ -186,7 +186,7 @@ std::vector<Vehicle> BehaviorPlanner::plan_next_position(	Vehicle &car,
 
     // Define the actual (x,y) points we will use for the planner
     std::vector<Vehicle> next_vals;
-    
+
     // Start with all of the previous path points from last time
     for (int ii = 0; ii < previous_path.size(); ii++){
 		Vehicle new_point = Vehicle(previous_path[ii].x, previous_path[ii].y);
@@ -199,7 +199,6 @@ std::vector<Vehicle> BehaviorPlanner::plan_next_position(	Vehicle &car,
     target.y = my_spline(target.x);
 
     double x_add_on = 0;
-
     // Fill up the rest of our path planner after filling it with previous points, here we will
     // always output 50 points
     for( int ii = 1; ii <= 50-previous_path.size(); ii++ ){
