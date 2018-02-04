@@ -10,6 +10,8 @@
 
 #include "sensor_fusion_point.h"
 
+class BehaviorPlanner;
+
 class Vehicle{
 
 public:
@@ -66,7 +68,7 @@ public:
 	Vehicle(double x, double y, double s, double d);
 	Vehicle(double x, double y, double s, double d, double yaw, double speed);
 	Vehicle(int lane, float s, float v, float a, std::string state="CS");
-	Vehicle(SensorFusionPoint other_vehicle);
+	Vehicle(SensorFusionPoint other_vehicle, BehaviorPlanner &bp);
 
 	virtual ~Vehicle();
 

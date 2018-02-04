@@ -147,56 +147,50 @@ vector<double> getFrenet(double x, double y, double theta, const vector<double> 
 
 }
 
-vector<double> *global_p_map_waypoints_x;
-vector<double> *global_p_map_waypoints_y;
-vector<double> *global_p_map_waypoints_s;
 
 
-int main() {
-  uWS::Hub h;
+int main()
+{
+	uWS::Hub h;
 
-  // Load up map values for waypoint's x,y,s and d normalized normal vectors
+	// Load up map values for waypoint's x,y,s and d normalized normal vectors
 
-  vector<double> map_waypoints_x;
-  vector<double> map_waypoints_y;
-  vector<double> map_waypoints_s;
-  vector<double> map_waypoints_dx;
-  vector<double> map_waypoints_dy;
+	vector<double> map_waypoints_x;
+	vector<double> map_waypoints_y;
+	vector<double> map_waypoints_s;
+	vector<double> map_waypoints_dx;
+	vector<double> map_waypoints_dy;
 
-  // Waypoint map to read from
-  string map_file_ = "../data/highway_map.csv";
-  // The max s value before wrapping around the track back to 0
-  double max_s = GOAL_S;
+	// Waypoint map to read from
+	string map_file_ = "../data/highway_map.csv";
+	// The max s value before wrapping around the track back to 0
+	double max_s = GOAL_S;
 
-  ifstream in_map_(map_file_.c_str(), ifstream::in);
+	ifstream in_map_(map_file_.c_str(), ifstream::in);
 
-  string line;
-  while (getline(in_map_, line)) {
-  	istringstream iss(line);
-  	double x;
-  	double y;
-  	float s;
-  	float d_x;
-  	float d_y;
-  	iss >> x;
-  	iss >> y;
-  	iss >> s;
-  	iss >> d_x;
-  	iss >> d_y;
-  	map_waypoints_x.push_back(x);
-  	map_waypoints_y.push_back(y);
-  	map_waypoints_s.push_back(s);
-  	map_waypoints_dx.push_back(d_x);
-  	map_waypoints_dy.push_back(d_y);
-  }
-  global_p_map_waypoints_x = &map_waypoints_x;
-  global_p_map_waypoints_y = &map_waypoints_y;
-  global_p_map_waypoints_s = &map_waypoints_s;
+	string line;
+	while (getline(in_map_, line)) {
+		istringstream iss(line);
+		double x;
+		double y;
+		float s;
+		float d_x;
+		float d_y;
+		iss >> x;
+		iss >> y;
+		iss >> s;
+		iss >> d_x;
+		iss >> d_y;
+		map_waypoints_x.push_back(x);
+		map_waypoints_y.push_back(y);
+		map_waypoints_s.push_back(s);
+		map_waypoints_dx.push_back(d_x);
+		map_waypoints_dy.push_back(d_y);
+	}
 
-  // Start in lane 1
-  int lane = START_LANE;
-  Vehicle car = Vehicle();
-  car.reference_lane = lane;
+	// Start in lane 1
+	Vehicle car = Vehicle();
+	car.reference_lane = START_LANE;
 
 	vector<int> car_config = {	SPEED_LIMIT_MPH,
 								NUM_LANES,
@@ -205,93 +199,90 @@ int main() {
 								MAX_ACCELERATION_METER_S2};
 
 	car.configure(car_config);
+    BehaviorPlanner behavior_planner = BehaviorPlanner( map_waypoints_x,
+														map_waypoints_y,
+														map_waypoints_s);
 
-  h.onMessage([&car, &lane, &map_waypoints_x, &map_waypoints_y, &map_waypoints_s, &map_waypoints_dx, &map_waypoints_dy](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
-                     uWS::OpCode opCode) {
-    // "42" at the start of the message means there's a websocket message event.
-    // The 4 signifies a websocket message
-    // The 2 signifies a websocket event
-    //auto sdata = string(data).substr(0, length);
-    //cout << sdata << endl;
-    if (length && length > 2 && data[0] == '4' && data[1] == '2') {
+    h.onMessage([&car, &behavior_planner, &map_waypoints_dx, &map_waypoints_dy]
+				 (uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,uWS::OpCode opCode) {
+		// "42" at the start of the message means there's a websocket message event.
+		// The 4 signifies a websocket message
+		// The 2 signifies a websocket event
+		//auto sdata = string(data).substr(0, length);
+		//cout << sdata << endl;
+		if (length && length > 2 && data[0] == '4' && data[1] == '2') {
 
-      auto s = hasData(data);
+			auto s = hasData(data);
 
-      if (s != "") {
-        auto json_msg = json::parse(s);
-        
-        string event = json_msg[0].get<string>();
-        
-        if (event == "telemetry") {
-          // json_msg[1] is the data JSON object
-          
-        	// Main car's localization Data
-            car.x = json_msg[1]["x"];
-            car.y = json_msg[1]["y"];
-            car.s = json_msg[1]["s"];
-            car.d = json_msg[1]["d"];
-            car.yaw_rad = json_msg[1]["yaw"];
-            car.current_velocity = json_msg[1]["speed"];
+			if (s != "") {
+				auto json_msg = json::parse(s);
 
-          	// Previous path data given to the Planner
-          	auto previous_path_x = json_msg[1]["previous_path_x"];
-          	auto previous_path_y = json_msg[1]["previous_path_y"];
+				string event = json_msg[0].get<string>();
 
-            int prev_size = previous_path_x.size();
+				if (event == "telemetry") {
+					// json_msg[1] is the data JSON object
 
-            vector<Vehicle> previous_path;
-            for( int ii = 0; ii<prev_size; ii++){
-              previous_path.push_back( Vehicle(previous_path_x[ii], previous_path_y[ii]) );
-            }
+					// Main car's localization Data
+					car.x = json_msg[1]["x"];
+					car.y = json_msg[1]["y"];
+					car.s = json_msg[1]["s"];
+					car.d = json_msg[1]["d"];
+					car.yaw_rad = json_msg[1]["yaw"];
+					car.current_velocity = json_msg[1]["speed"];
 
-          	// Previous path's end s and d values 
-            Vehicle end_path = Vehicle(0.0, 0.0, json_msg[1]["end_path_s"], json_msg[1]["end_path_d"]);
+					// Previous path data given to the Planner
+					auto previous_path_x = json_msg[1]["previous_path_x"];
+					auto previous_path_y = json_msg[1]["previous_path_y"];
 
-          	// Sensor Fusion Data, a list of all other cars on the same side of the road.
-          	auto sensor_fusion = json_msg[1]["sensor_fusion"];
+					int prev_size = previous_path_x.size();
 
-            // Get sensor fusion data
-            vector<SensorFusionPoint> sensor_fusion_points;
-            for(int ii = 0; ii < sensor_fusion.size(); ii++){
-                SensorFusionPoint new_point;
-                new_point.d = sensor_fusion[ii][6];
-                new_point.vx = sensor_fusion[ii][3];
-                new_point.vy = sensor_fusion[ii][4];
-                new_point.speed = sqrt( new_point.vx*new_point.vx + new_point.vy*new_point.vy );
-                new_point.s = sensor_fusion[ii][5];
+					vector<Vehicle> previous_path;
+					for( int ii = 0; ii<prev_size; ii++){
+						previous_path.push_back( Vehicle(previous_path_x[ii], previous_path_y[ii]) );
+					}
 
-                sensor_fusion_points.push_back(new_point);
-            }
+					// Previous path's end s and d values
+					Vehicle end_path = Vehicle(0.0, 0.0, json_msg[1]["end_path_s"], json_msg[1]["end_path_d"]);
 
-            BehaviorPlanner behavior_planner = BehaviorPlanner();
-            vector<Vehicle> next_vals = behavior_planner.plan_next_position(car, 
-																			previous_path,
-																			end_path,
-																			sensor_fusion_points,
-																			map_waypoints_x,
-																			map_waypoints_y,
-																			map_waypoints_s);
+					// Sensor Fusion Data, a list of all other cars on the same side of the road.
+					auto sensor_fusion = json_msg[1]["sensor_fusion"];
 
-            json msgJson;
+					// Get sensor fusion data
+					vector<SensorFusionPoint> sensor_fusion_points;
+					for(int ii = 0; ii < sensor_fusion.size(); ii++){
+					SensorFusionPoint new_point;
+					new_point.d = sensor_fusion[ii][6];
+					new_point.vx = sensor_fusion[ii][3];
+					new_point.vy = sensor_fusion[ii][4];
+					new_point.speed = sqrt( new_point.vx*new_point.vx + new_point.vy*new_point.vy );
+					new_point.s = sensor_fusion[ii][5];
 
-          	msgJson["next_x"] = Vehicle::get_vector_x_from_list(next_vals);
-          	msgJson["next_y"] = Vehicle::get_vector_y_from_list(next_vals);
+					sensor_fusion_points.push_back(new_point);
+				}
 
-          	auto msg = "42[\"control\","+ msgJson.dump()+"]";
+				vector<Vehicle> next_vals = behavior_planner.plan_next_position(car,
+																				previous_path,
+																				end_path,
+																				sensor_fusion_points);
+				json msgJson;
+				msgJson["next_x"] = Vehicle::get_vector_x_from_list(next_vals);
+				msgJson["next_y"] = Vehicle::get_vector_y_from_list(next_vals);
 
-          	//this_thread::sleep_for(chrono::milliseconds(1000));
-          	ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
-          
-        }
-      } else {
-        // Manual driving
-        std::string msg = "42[\"manual\",{}]";
-        ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
-      }
+				auto msg = "42[\"control\","+ msgJson.dump()+"]";
 
-      //usleep(100000);
-    }
-  });
+				//this_thread::sleep_for(chrono::milliseconds(1000));
+				ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
+			}
+		}
+		else {
+			// Manual driving
+			std::string msg = "42[\"manual\",{}]";
+			ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
+		}
+
+		//usleep(100000);
+		}
+	});
 
   // We don't need this since we're not using HTTP but if it's removed the
   // program

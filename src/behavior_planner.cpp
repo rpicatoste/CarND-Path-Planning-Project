@@ -1,9 +1,10 @@
+#include "behavior_planner.h"
+
 #include <iostream>
 #include <map>
 #include <math.h>
 #include <vector>
 
-#include "behavior_planner.h"
 #include "main_constants.h"
 #include "sensor_fusion_point.h"
 #include "spline.h"
@@ -14,11 +15,7 @@ constexpr double pi() { return M_PI; }
 std::vector<Vehicle> BehaviorPlanner::plan_next_position(	Vehicle &car, 
 															std::vector<Vehicle> previous_path,
 															Vehicle end_path,
-															std::vector<SensorFusionPoint> other_cars,
-															//std::map<int, std::vector<SensorFusionPoint>> vehicles,
-															std::vector<double> map_waypoints_x,
-															std::vector<double> map_waypoints_y,
-															std::vector<double> map_waypoints_s)
+															std::vector<SensorFusionPoint> other_cars)
 {
 	printf("\n----------- Entering planner. Current reference lane: %d. Speed: % 3.0f Number of vehicles: %d -----------\n\n",
 			car.reference_lane, car.velocity, other_cars.size());
@@ -49,7 +46,7 @@ std::vector<Vehicle> BehaviorPlanner::plan_next_position(	Vehicle &car,
 		vehicle_id = vehicle_counter;
         predictions_for_current_vehicle_raw = p_vehicle->generate_predictions();
         for(int ii = 0; ii < predictions_for_current_vehicle_raw.size(); ii++){
-        	predictions_for_current_vehicle.push_back(Vehicle(predictions_for_current_vehicle_raw[ii]));
+        	predictions_for_current_vehicle.push_back(Vehicle(predictions_for_current_vehicle_raw[ii], *this));
         }
         all_predictions[vehicle_id] = predictions_for_current_vehicle;
         p_vehicle++;
@@ -115,14 +112,10 @@ std::vector<Vehicle> BehaviorPlanner::plan_next_position(	Vehicle &car,
     printf("Car s: %f\n", car.s);
     // ********************************************************************************************************************
 
-
-
-
-  	// TODO: define a path made up of (x,y) points that the car will visit sequentially every .02 seconds
-    // Create very spaced (30m) waypoints, then interpolate with spline.
+  	// Define a path made up of (x,y) points that the car will visit sequentially every .02 seconds
+    // Create very spaced waypoints, then interpolate with spline.
     std::vector<Vehicle> next_waypoints_raw;
     Vehicle reference_point = Vehicle();
-
 
     if(prev_size < 2){
 		// Use 2 points that make the path tangent to the car.
@@ -160,24 +153,12 @@ std::vector<Vehicle> BehaviorPlanner::plan_next_position(	Vehicle &car,
     // At 50 mph, the distance_to_next_waypoint is 30.0 meters.
     float distance_to_next_waypoint = car.velocity * 3.0/5.0;
     const float min_distance_to_next_waypoint = 3.0;
-    distance_to_next_waypoint = (distance_to_next_waypoint > min_distance_to_next_waypoint) ? distance_to_next_waypoint : min_distance_to_next_waypoint;
+    distance_to_next_waypoint = (distance_to_next_waypoint > min_distance_to_next_waypoint) ?
+    														distance_to_next_waypoint : min_distance_to_next_waypoint;
 
-
-    Vehicle next_wp0 = Vehicle( getXY(car.s + distance_to_next_waypoint,
-									  (2+4*car.reference_lane),
-									  map_waypoints_s,
-									  map_waypoints_x,
-									  map_waypoints_y) );
-    Vehicle next_wp1 = Vehicle( getXY(car.s + 2*distance_to_next_waypoint,
-									  (2+4*car.reference_lane),
-									  map_waypoints_s,
-									  map_waypoints_x,
-									  map_waypoints_y) );
-    Vehicle next_wp2 = Vehicle( getXY(car.s + 3*distance_to_next_waypoint,
-									  (2+4*car.reference_lane),
-									  map_waypoints_s,
-									  map_waypoints_x,
-									  map_waypoints_y) );
+    Vehicle next_wp0 = Vehicle( getXY(car.s +   distance_to_next_waypoint, (2+4*car.reference_lane)) );
+    Vehicle next_wp1 = Vehicle( getXY(car.s + 2*distance_to_next_waypoint, (2+4*car.reference_lane)) );
+    Vehicle next_wp2 = Vehicle( getXY(car.s + 3*distance_to_next_waypoint, (2+4*car.reference_lane)) );
 
     next_waypoints_raw.push_back(next_wp0);            
     next_waypoints_raw.push_back(next_wp1);
@@ -258,27 +239,23 @@ std::vector<Vehicle> BehaviorPlanner::convert_raw_waypoints_to_simulator_waypoin
 
 
 // Transform from Frenet s,d coordinates to Cartesian x,y
-std::vector<double> BehaviorPlanner::getXY(	double s,
-											double d,
-											const std::vector<double> &maps_s,
-											const std::vector<double> &maps_x,
-											const std::vector<double> &maps_y)
+std::vector<double> BehaviorPlanner::getXY(	double s, double d)
 {
 	int prev_wp = -1;
 
-	while(s > maps_s[prev_wp+1] && (prev_wp < (int)(maps_s.size()-1) ))
+	while(s > map_waypoints_s[prev_wp+1] && (prev_wp < (int)(map_waypoints_s.size()-1) ))
 	{
 		prev_wp++;
 	}
 
-	int wp2 = (prev_wp+1)%maps_x.size();
+	int wp2 = (prev_wp+1)%map_waypoints_x.size();
 
-	double heading = atan2((maps_y[wp2]-maps_y[prev_wp]),(maps_x[wp2]-maps_x[prev_wp]));
+	double heading = atan2((map_waypoints_y[wp2]-map_waypoints_y[prev_wp]),(map_waypoints_x[wp2]-map_waypoints_x[prev_wp]));
 	// the x,y,s along the segment
-	double seg_s = (s-maps_s[prev_wp]);
+	double seg_s = (s-map_waypoints_s[prev_wp]);
 
-	double seg_x = maps_x[prev_wp]+seg_s*cos(heading);
-	double seg_y = maps_y[prev_wp]+seg_s*sin(heading);
+	double seg_x = map_waypoints_x[prev_wp]+seg_s*cos(heading);
+	double seg_y = map_waypoints_y[prev_wp]+seg_s*sin(heading);
 
 	double perp_heading = heading-pi()/2;
 

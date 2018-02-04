@@ -15,10 +15,6 @@
 float REACH_GOAL = pow(10, 6);
 float EFFICIENCY = pow(10, 5);
 
-extern std::vector<double> *global_p_map_waypoints_x;
-extern std::vector<double> *global_p_map_waypoints_y;
-extern std::vector<double> *global_p_map_waypoints_s;
-
 Vehicle::Vehicle()
 {
 	this->velocity = 0.0;
@@ -64,14 +60,12 @@ Vehicle::Vehicle(double x, double y, double s, double d, double yaw_deg, double 
 	this->velocity = 0.0;
 }
 
-Vehicle::Vehicle(SensorFusionPoint other_vehicle)
+//class BehaviorPlanner;
+
+Vehicle::Vehicle(SensorFusionPoint other_vehicle, BehaviorPlanner &bp)
 {
-    BehaviorPlanner bp = BehaviorPlanner();
     auto xy = bp.getXY(other_vehicle.s,
-						other_vehicle.d,
-						*global_p_map_waypoints_s,
-						*global_p_map_waypoints_x,
-						*global_p_map_waypoints_y);
+						other_vehicle.d);
     this->x = xy[0];
     this->y = xy[1];
 	this->s  = other_vehicle.s;
