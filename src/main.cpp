@@ -257,7 +257,9 @@ int main()
 						new_point.vy = sensor_fusion[ii][4];
 						new_point.s = sensor_fusion[ii][5];
 						new_point.d = sensor_fusion[ii][6];
-						new_point.speed = sqrt( new_point.vx*new_point.vx + new_point.vy*new_point.vy );
+
+						float speed_m_per_s = sqrt( new_point.vx*new_point.vx + new_point.vy*new_point.vy );
+						new_point.speed = M_PER_S_TO_MPH * speed_m_per_s;
 
 						sensor_fusion_points.push_back(new_point);
 					}

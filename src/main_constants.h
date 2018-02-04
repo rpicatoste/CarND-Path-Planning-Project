@@ -35,4 +35,6 @@
 #define SAMPLING_TIME (0.02)
 #define SAMPLING_RATE (50.0)
 
+#define M_PER_S_TO_MPH (2.24)
+
 #endif /* SRC_MAIN_CONSTANTS_H_ */

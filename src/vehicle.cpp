@@ -71,8 +71,7 @@ Vehicle::Vehicle(SensorFusionPoint other_vehicle, BehaviorPlanner &bp)
 	this->yaw_deg = 0.0;
 	this->yaw_rad = deg2rad(yaw_deg);
 
-	this->velocity = sqrt(other_vehicle.vx*other_vehicle.vx + other_vehicle.vy*other_vehicle.vy);
-
+	this->velocity = other_vehicle.speed;
 	this->reference_lane = this->get_current_lane();
 }
 
