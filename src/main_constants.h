@@ -29,6 +29,8 @@
 #define WEIGHT_DISTANCE_GOAL (1000.0)
 #define WEIGHT_LANE_GOAL	 (1000.0)
 #define WEIGHT_EFFICIENCY    (1000.0)
+#define LANE_CHANGE_PENALIZATION (200.0)
+#define LANE_CHANGE_BONIFICATION (-200.0)
 
 #define LANE_WIDTH (4.0)
 
@@ -43,6 +45,11 @@
 #define CAR_LENGTH (5.0)
 #define SAFETY_DISTANCE ()
 
-#define DISTANTE_TO_START_GOING_TO_GOAL_LANE (200.0)
+#define DISTANCE_TO_START_GOING_TO_GOAL_LANE (200.0)
+#define DISTANCE_TO_CONSIDER_CARS_IN_LANE (50.0)
+
+
+
+#define SATURATE(x,max) (x > max) ? max : ((x < -max) ? -max : x)
 
 #endif /* SRC_MAIN_CONSTANTS_H_ */

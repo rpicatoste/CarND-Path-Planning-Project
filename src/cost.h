@@ -6,7 +6,7 @@
 #include <vector>
 #include <map>
 
-std::tuple<float, float, float, float, float> calculate_cost(
+std::tuple<float, float, float, float, float, float> calculate_cost(
 		const Vehicle & vehicle,
 		const std::map<int, std::vector<Vehicle>> & predictions,
 		const std::vector<Vehicle> & trajectory);
@@ -36,6 +36,7 @@ void print_costs(	std::vector <float> &costs,
 					std::vector <float> &lane_distance_costs,
 					std::vector <float> &inefficiency_costs,
 					std::vector <float> &penalizations,
+                    std::vector <float> &lane_speeds,
 					int best_idx,
 					std::vector<std::string> states);
 

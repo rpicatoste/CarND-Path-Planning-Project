@@ -50,6 +50,10 @@ public:
 	float position_at(float t);
 	std::vector<Vehicle> keep_lane_trajectory(std::map<int, std::vector<Vehicle>> predictions);
 
+	float get_lane_speed(
+	        std::map<int, std::vector<Vehicle>> predictions,
+	        int lane) const;
+
 	bool get_vehicle_ahead(
 			std::map<int, std::vector<Vehicle>> predictions,
 			int lane,

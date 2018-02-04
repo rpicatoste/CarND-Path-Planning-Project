@@ -17,8 +17,8 @@ std::vector<Vehicle> BehaviorPlanner::plan_next_position(	Vehicle &car,
 															Vehicle end_path,
 															std::vector<SensorFusionPoint> other_cars_raw)
 {
-	printf("\n----- Entering planner. Lane: (reference: %d real: %d). s: % 4.0f m. d: 3.1f. Speed: % 3.0f m/s. Number of vehicles: %d -----\n\n",
-			car.reference_lane, car.get_current_lane(), car.s, car.d, car.velocity, other_cars_raw.size());
+	printf("\n----- Entering planner. State: %s. Lane: (reference: %d real: %d). s: % 4.0f m. d: %3.1f. Speed: % 3.0f mph. Number of vehicles: %d -----\n\n",
+	        car.state.c_str(), car.reference_lane, car.get_current_lane(), car.s, car.d, car.velocity, other_cars_raw.size());
 
     int prev_size = previous_path.size();
     if(prev_size > 0){
