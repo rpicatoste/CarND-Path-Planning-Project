@@ -12,9 +12,6 @@
 #include "main_constants.h"
 
 
-float REACH_GOAL = pow(10, 6);
-float EFFICIENCY = pow(10, 5);
-
 Vehicle::Vehicle()
 {
 	this->velocity = 0.0;
@@ -175,7 +172,6 @@ std::string Vehicle::relative_position_to_string(const Vehicle& my_car)
 
 std::ostream& operator<<(std::ostream& os, const Vehicle& point)
 {
-
     return os << "(x:" << point.x << ", y:" << point.y << "// s:" << point.s << ", d:" << point.d << ")";
 }
 
@@ -195,7 +191,6 @@ int Vehicle::get_current_lane(void)
 }
 
 /*********************************************************************************/
-
 
 void Vehicle::print_info()
 {
@@ -292,7 +287,6 @@ std::vector<std::string> Vehicle::successor_states() {
 
     // During changes of lane we allow only to stay in the current state.
     if(this->get_current_lane() != this->reference_lane){
-    	printf("---- CHANGING LANES!!! --------\n");
     	return possible_next_states;
     }
 
@@ -424,7 +418,6 @@ std::vector<float> Vehicle::get_lane_kinematics(std::map<int, std::vector<Vehicl
     return{new_position, new_velocity, new_accel, lane_speed};
 
 }
-
 
 std::vector<Vehicle> Vehicle::constant_speed_trajectory()
 {

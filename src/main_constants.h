@@ -12,8 +12,6 @@
 #define LANES_AVAILABLE (3)
 
 
-
-
 #define	SPEED_LIMIT_MPH (49)
 #define NUM_LANES (3)
 #define	GOAL_S (6945)
