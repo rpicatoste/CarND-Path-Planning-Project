@@ -5,7 +5,7 @@
 This is the Path planning project, where we write a program that will take the control of the car. 
 The information from the sensors will be given already processed with the position and speed of the surrounding cars, and the goal will be to navigate the road until the final destination is reached.
 
-I recorded a video with the resulting software after some tuning of the parameters, that can be found here:
+I recorded a video with the resulting software after some tuning of the parameters, that can be found here (click on the image):
 
 [![Project Video](https://img.youtube.com/vi/-uRjtP7aQNs/0.jpg)](https://youtu.be/-uRjtP7aQNs)
 
