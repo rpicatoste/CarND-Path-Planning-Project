@@ -3,33 +3,30 @@
 **Ricardo Picatoste**
 
 This is the Path planning project, where we write a program that will take the control of the car. 
-The information from the sensors will be given already processed with the position and speed of the sorrounding cars, and the goal will be to navigate the road until the final destination is reached.
+The information from the sensors will be given already processed with the position and speed of the surrounding cars, and the goal will be to navigate the road until the final destination is reached.
 
-I recorded a video with the resulting software after some tuning of the parameters, which can be found here:
-https://youtu.be/-uRjtP7aQNs
+I recorded a video with the resulting software after some tuning of the parameters, that can be found here:
+
+[![Project Video](https://youtu.be/-uRjtP7aQNs)
 
 The car does several changes of lane. 
-At the end, when it is close to the goal 4.23 miles, it can be appreciated how it tends to avoid changing lane, as since the goal is approaching, it will just try to get to the goal.
+At the end, when it is close to the goal 4.23 miles, it can be appreciated how it tends to avoid changing lane, as since the goal is approaching, it will just try to get to it.
 
 Once the point of the 4.23 miles is passed, however, the car starts "running" again and overtakes the car in front.
 
-This is due to the fact that nead the goal, going faster has diminishing importance as compared to stay in the proper lane.
+This is due to the fact that near the goal, going faster has diminishing importance as compared to stay in the proper lane.
 
 
 ### Running the code:
 
 I used this code in Windows 10. 
 To compile and run it, I use the Bash no Ubuntu on Windows.
-To do it, clone the project and go to the folder: 
-/project/build
-
-To compile the project:
-cmake .. && make 
-
-And to run:
-./path_planning
-
-In parallel, run the simulator in Windows. 
+To do it, these are the steps:
+* Clone the project 
+* Go to the folder: */project/build*
+* To compile the project: *cmake .. && make *
+* And to run: *./path_planning*
+* In parallel, run the simulator in Windows. 
 
 
 ### Path planning
@@ -81,6 +78,16 @@ The purpose of the latter is only to let the finite state machine pass from prep
 The lane_speed will be by defaul the maximum speed. 
 Then the cars around us will be checked, and for each lane, those cars in front of us (higher s value) will be considered.
 If one of those cars is close enough to our car (in the s axis), its speed will become the lane_speed, as we cannot go faster than the car in front of us.
+
+### Structure of the code:
+
+The different .cpp and .h and their content:
+* main: Start the program and interchange data with the simulator.
+* behavior_planner: The planner that will call the different functions deciding the actions to take, and will generate the list of points to send to the simulator to follow.
+* vehicle: Class defining a vehicle, both for our car and for the other cars.
+* cost: Cost functions definition.
+* sensor_fusion_point: Structure for the sensor fusion data received from the simulator.
+* helpers: Some helper functions.
 
 
 
