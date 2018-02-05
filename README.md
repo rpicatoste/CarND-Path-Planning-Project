@@ -7,7 +7,7 @@ The information from the sensors will be given already processed with the positi
 
 I recorded a video with the resulting software after some tuning of the parameters, that can be found here:
 
-[![Project Video](https://youtu.be/-uRjtP7aQNs)
+[![Project Video](https://img.youtube.com/vi/-uRjtP7aQNs/0.jpg)](https://youtu.be/-uRjtP7aQNs)
 
 The car does several changes of lane. 
 At the end, when it is close to the goal 4.23 miles, it can be appreciated how it tends to avoid changing lane, as since the goal is approaching, it will just try to get to it.
